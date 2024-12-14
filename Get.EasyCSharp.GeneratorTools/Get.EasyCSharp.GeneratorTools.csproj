@@ -1,0 +1,44 @@
+<Project Sdk="Microsoft.NET.Sdk">
+	<PropertyGroup>
+		<Version>1.1.0</Version>
+		<TargetFramework>netstandard2.0</TargetFramework>
+		<LangVersion>Preview</LangVersion>
+		<Nullable>enable</Nullable>
+		<EnforceExtendedAnalyzerRules>true</EnforceExtendedAnalyzerRules>
+		<RepositoryUrl>https://github.com/Get0457/EasyCSharp/tree/master</RepositoryUrl>
+		<PackageReadmeFile>README.md</PackageReadmeFile>
+		<IncludeSymbols>True</IncludeSymbols>
+		<PackageLicenseExpression>MIT</PackageLicenseExpression>
+		<Authors>Get</Authors>
+		<PackageOutputPath>..\Package</PackageOutputPath>
+	</PropertyGroup>
+	<ItemGroup>
+		<None Include="..\README.md" Pack="True" PackagePath="/" />
+	</ItemGroup>
+	<ItemGroup>
+	  <Compile Remove="bin\**" />
+	  <EmbeddedResource Remove="bin\**" />
+	  <None Remove="bin\**" />
+	</ItemGroup>
+	<ItemGroup>
+		<ProjectReference Include="..\CopySourceGenerator\CopySourceGenerator.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
+	</ItemGroup>
+	<ItemGroup>
+		<PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="4.6.0" PrivateAssets="all" />
+		<PackageReference Include="Microsoft.CodeAnalysis.Analyzers" Version="3.3.4" PrivateAssets="all" />
+		<PackageReference Include="PolySharp" Version="1.13.2">
+		  <PrivateAssets>all</PrivateAssets>
+		  <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+		</PackageReference>
+	</ItemGroup>
+	<ItemGroup>
+	  <None Remove="bin\Release\netstandard2.0\\EasyCSharp.GeneratorTools.dll" />
+	</ItemGroup>
+	<ItemGroup>
+		<None Include="$(OutputPath)\$(AssemblyName).dll" Pack="true" PackagePath="analyzers/dotnet/cs" Visible="false" />
+		<None Include="..\README.md">
+			<Pack>True</Pack>
+			<PackagePath>\</PackagePath>
+		</None>
+	</ItemGroup>
+</Project>
