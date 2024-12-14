@@ -4,7 +4,7 @@
 
 A general lexer and LR(1) parser implementation in C#. It has not been tested througly yet. This is intended to be used behind a source gen, that is not incomplete yet. For now, all the work must be done manually.
 
-See Get.Parser.Test and Get.Lexer.Test for manual implementation. In the future, the pattern may change since source generator will take care of some of it.
+See Get.Parser.Test and Get.Lexer.Test for some sample of manual implementation. In the future, the pattern may change since source generator will take care of some of it.
 
 ## Warning
 
