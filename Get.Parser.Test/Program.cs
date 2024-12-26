@@ -1,4 +1,5 @@
 ﻿using Get.Parser.Test;
 
-MathTests.TestMath();
-MathTests.Interpreter();
+//MathTests.TestMath();
+//MathTests.Interpreter();
+TestManualRuleAttr.Test();

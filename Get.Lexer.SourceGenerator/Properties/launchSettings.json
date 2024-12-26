@@ -1,0 +1,12 @@
+{
+  "profiles": {
+    "Source Gen - Get.Lexer.Test": {
+      "commandName": "DebugRoslynComponent",
+      "targetProject": "..\\Get.Lexer.Test\\Get.Lexer.Test.csproj"
+    },
+    "Source Gen - QuickCode": {
+      "commandName": "DebugRoslynComponent",
+      "targetProject": "..\\QuickCode\\QuickCode.csproj"
+    }
+  }
+}

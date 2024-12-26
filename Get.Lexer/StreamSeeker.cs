@@ -55,6 +55,12 @@ public partial class StreamSeeker(Stream stream, int ReadAmount = 256, int Buffe
 
     public void Reverse(int characters)
     {
+        if (CurrentPosition - characters is -1)
+        {
+            // allow resetting
+            Reset();
+            return;
+        }
         if (characters > bufferIndexCurrent)
             throw new ArgumentOutOfRangeException();
         bufferIndexCurrent -= characters;

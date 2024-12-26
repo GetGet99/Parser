@@ -22,11 +22,13 @@ partial class AtributeConverterGenerator : GeneratorBase<ClassAttributeSyntaxRec
         var INamedTypeSymbolSymbol = context.Compilation.GetTypeByMetadataName(typeof(INamedTypeSymbol).FullName);
         var ITypeSymbolSymbol = context.Compilation.GetTypeByMetadataName(typeof(ITypeSymbol).FullName);
         var IExtensionSymbol = context.Compilation.GetTypeByMetadataName(typeof(Extension).FullName);
+        var IEnumSymbol = context.Compilation.GetTypeByMetadataName(typeof(Enum).FullName);
         if (AddAttributeSymbol is null) return;
         if (TypeSymbol is null) return;
         if (AttributeSymbol is null) return;
         if (INamedTypeSymbolSymbol is null) return;
         if (ITypeSymbolSymbol is null) return;
+        if (IEnumSymbol is null) return;
         foreach (var @class in SyntaxReceiver.Classes)
         {
             context.AddSource($"{@class.ContainingNamespace}.{@class.Name}_GeneratedAttributeConverter.g.cs", $$"""
@@ -49,7 +51,8 @@ partial class AtributeConverterGenerator : GeneratorBase<ClassAttributeSyntaxRec
                                 TypeSymbol,
                                 INamedTypeSymbolSymbol,
                                 AttributeSymbol,
-                                ITypeSymbolSymbol
+                                ITypeSymbolSymbol,
+                                IEnumSymbol
                             ).JoinDoubleNewLine().IndentWOF(2)
                         }}
                     }
@@ -57,7 +60,7 @@ partial class AtributeConverterGenerator : GeneratorBase<ClassAttributeSyntaxRec
                 """);
         }
     }
-    static IEnumerable<string> ProcessAttributes(ImmutableArray<AttributeData> AttributeData, ISymbol AddAttributeSymbol, ISymbol TypeSymbol, INamedTypeSymbol INamedTypeSymbolSymbol, ISymbol AttributeSymbol, ITypeSymbol ITypeSymbolSymbol)
+    static IEnumerable<string> ProcessAttributes(ImmutableArray<AttributeData> AttributeData, ISymbol AddAttributeSymbol, ISymbol TypeSymbol, INamedTypeSymbol INamedTypeSymbolSymbol, ISymbol AttributeSymbol, ITypeSymbol ITypeSymbolSymbol, INamedTypeSymbol SystemEnumSymbol)
     {
         foreach (var attribute in AttributeData)
         {
@@ -195,7 +198,7 @@ partial class AtributeConverterGenerator : GeneratorBase<ClassAttributeSyntaxRec
                 }}
             }
 
-            private static {{TypeWrapper}} {{FuncName ?? $"AttributeDataTo{Type.Name}"}}({{typeof(AttributeData).FullName}} attributeData, {{typeof(Compilation)}} compilation) {
+            private static {{TypeWrapper}} {{FuncName ?? $"AttributeDataTo{StructName ?? Type.Name}"}}({{typeof(AttributeData).FullName}} attributeData, {{typeof(Compilation)}} compilation) {
                 var result = new {{TypeWrapper}}(compilation);
                 
                 // Type Parameters
@@ -223,7 +226,11 @@ partial class AtributeConverterGenerator : GeneratorBase<ClassAttributeSyntaxRec
                            select
                                $"""
                                 // {param.Name}
-                                result.{param.Name} = {(type.TypeKind == TypeKind.Enum ? $"({type})" : "")}{typeof(Extension).FullName}.CastOrDefault(attributeData.ConstructorArguments[{i}].Value, {
+                                result.{param.Name} = {(
+                                    type.TypeKind == TypeKind.Enum ?
+                                        $"({type})" :
+                                        (type.Equals(SystemEnumSymbol, SymbolEqualityComparer.Default) ? "object" : "")
+                                    )}{typeof(Extension).FullName}.CastOrDefault(attributeData.ConstructorArguments[{i}].Value, {
                                     (type.TypeKind == TypeKind.Enum ? $"({((INamedTypeSymbol)type).EnumUnderlyingType})default({type})" : $"default({type})")
                                 });
                                 """
@@ -253,7 +260,11 @@ partial class AtributeConverterGenerator : GeneratorBase<ClassAttributeSyntaxRec
                                         $"""
                                         // {member.Name}
                                         case "{member.Name}":
-                                            result.{member.Name} = {(type.TypeKind == TypeKind.Enum ? $"({type})" : "")}{typeof(Extension).FullName}.CastOrDefault(v.Value.Value, {
+                                            result.{member.Name} = {(
+                                            type.TypeKind == TypeKind.Enum ?
+                                                $"({type})" :
+                                                (type.Equals(SystemEnumSymbol, SymbolEqualityComparer.Default) ? "object" : "")
+                                            )}{typeof(Extension).FullName}.CastOrDefault(v.Value.Value, {
                                                 (type.TypeKind == TypeKind.Enum ? $"({((INamedTypeSymbol)type).EnumUnderlyingType})default({type})" : $"default({type})")
                                             });
                                             break;

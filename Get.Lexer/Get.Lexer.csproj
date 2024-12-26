@@ -11,4 +11,6 @@
     <ProjectReference Include="..\Get.RegexMachine\Get.RegexMachine.csproj" />
   </ItemGroup>
 
+  <Import Project="..\Get.Lexer.Shared\Get.Lexer.Shared.projitems" Label="Shared" />
+
 </Project>

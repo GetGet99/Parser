@@ -250,13 +250,16 @@ public class LRParserDFAGen(IEqualityComparer<INonTerminal> nontermComparer, IEq
                     foreach (var production in productions)
                     {
                         // Create a new item with the dot shifted
-                        var newReduceOn = firstSetMetadata.ComputeFirstSetOfSequence(new ListSpan<ISyntaxElement>(currentItem.ExpressionAfter, 1), currentItem.ReduceOn);
+                        var newReduceOn = firstSetMetadata.ComputeFirstSetOfSequence(
+                            new ListSpan<ISyntaxElement>(currentItem.ExpressionAfter, 1),
+                            currentItem.ReduceOn
+                        );
                         var newItem = new LRItem(production, 0, []);
                         if (!closureDict.TryGetValue(newItem, out var reduceOn))
                         {
                             closureDict[newItem] = reduceOn = newReduceOn;
                             // Add the new item to the worklist for further processing
-                            worklist.Enqueue(newItem);
+                            worklist.Enqueue(newItem with { ReduceOn = [.. newReduceOn] });
                         }
                         else
                         {
@@ -265,8 +268,10 @@ public class LRParserDFAGen(IEqualityComparer<INonTerminal> nontermComparer, IEq
                                 if (reduceOn.Add(rn))
                                     anyAdded = true;
                             if (anyAdded)
+                            {
                                 // Add the new item to the worklist for further processing
-                                worklist.Enqueue(newItem);
+                                worklist.Enqueue(newItem with { ReduceOn = [.. reduceOn] });
+                            }
                         }
                     }
                 }
@@ -314,30 +319,33 @@ public class LRParserDFAGen(IEqualityComparer<INonTerminal> nontermComparer, IEq
             do
             {
                 changed = false;
-                foreach (var ruleSet in grammar.Values)
+                foreach (var rule in grammar.Values.SelectMany(x => x))
                 {
-                    foreach (var rule in ruleSet)
+                    var targetFirstSet = FirstSets[rule.Target];
+
+                    foreach (var element in rule.Expressions)
                     {
-                        var targetFirstSet = FirstSets[rule.Target];
-
-                        foreach (var element in rule.Expressions)
+                        if (element is ITerminal terminal)
                         {
-                            if (element is ITerminal terminal)
-                            {
-                                if (targetFirstSet.Add(terminal))
-                                    changed = true;
-                                break;
-                            }
-                            else if (element is INonTerminal nonTerminal)
-                            {
-                                var elementFirstSet = FirstSets[nonTerminal];
-                                if (targetFirstSet.UnionWithExcludeEpsilon(elementFirstSet))
-                                    changed = true;
-
-                                if (!elementFirstSet.Contains(null)) // Epsilon not in first set
-                                    break;
-                            }
+                            if (targetFirstSet.Add(terminal))
+                                changed = true;
+                            break;
                         }
+                        else if (element is INonTerminal nonTerminal)
+                        {
+                            var elementFirstSet = FirstSets[nonTerminal];
+                            if (targetFirstSet.UnionWithExcludeEpsilon(elementFirstSet))
+                                changed = true;
+
+                            if (!elementFirstSet.Contains(null)) // Epsilon not in first set
+                                break;
+                        }
+                    }
+                    if (rule.Expressions.Count == 0)
+                    {
+                        // Rule -> <empty>, add epsilon
+                        if (targetFirstSet.Add(null))
+                            changed = true;
                     }
                 }
             } while (changed);
@@ -383,7 +391,7 @@ public class LRParserDFAGen(IEqualityComparer<INonTerminal> nontermComparer, IEq
         foreach (var item in lrItems)
         {
             if (item.DotIndex < item.OriginalCFGRule.Expressions.Count &&
-                item.OriginalCFGRule.Expressions[item.DotIndex] == symbol)
+                item.OriginalCFGRule.Expressions[item.DotIndex].Equals(symbol))
             {
                 gotoItems.Add(new LRItem(item.OriginalCFGRule, item.DotIndex + 1, item.ReduceOn));
             }
@@ -399,7 +407,7 @@ public readonly record struct LRItem(ICFGRule OriginalCFGRule, int DotIndex, ITe
     public override string ToString()
     {
         return $"{Target} -> {string.Join(" ", from x in ExpressionBefore select x.ToString())} . {string.Join(" ", from x in ExpressionAfter select x.ToString())}, {(
-            ReduceOn is null ? "<null>" : string.Join(" ", from x in ReduceOn select x?.ToString() ?? "[END]")
+            ReduceOn is null ? "<null>" : string.Join("/", from x in ReduceOn select x?.ToString() ?? "[END]")
         )}";
     }
     public bool Equals(LRItem other)
@@ -424,6 +432,10 @@ public readonly record struct LRItem(ICFGRule OriginalCFGRule, int DotIndex, ITe
         return hash;
     }
 }
+public sealed class ErrorTerminal : ITerminal {
+    public static ITerminal Singleton { get; } = new ErrorTerminal();
+    private ErrorTerminal() { }
+}
 public partial interface ICFGRule
 {
     INonTerminal Target { get; }
@@ -439,8 +451,20 @@ public interface ILRParserDFA
     /// <returns>null if we are shifting. Otherwise, return the appropriate action (either accept or reduce).</returns>
     ILRDFAAction? GetAction(IReadOnlyList<ISyntaxElementValue> stack, ITerminalValue? nextToken);
 }
-public record struct ILRDFAAccept : ILRDFAAction;
-public record struct LRDFAReduce(ICFGRule Rule) : ILRDFAAction;
+public record struct ILRDFAAccept : ILRDFAAction
+{
+    public override string ToString()
+    {
+        return "Accept";
+    }
+}
+public record struct LRDFAReduce(ICFGRule Rule) : ILRDFAAction
+{
+    public override string ToString()
+    {
+        return $"Reduce with: {Rule}";
+    }
+}
 public interface ILRDFAAction;
 public interface ISyntaxElement;
 public interface INonTerminal : ISyntaxElement;

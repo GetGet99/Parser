@@ -14,7 +14,13 @@ internal class LRParserDFA(IEqualityComparer<INonTerminal> nontermComparer, IEqu
     {
         if (stack.Count == 0)
         {
-            if (nextToken is null) return OnEndSymbol;
+            if (nextToken is null) {
+                if (OnEndSymbol is null)
+                    // expects more elements
+                    throw new LRParserRuntimeUnexpectedEndingException(Actions.Keys.Concat(NextDFANode.Keys).Distinct().ToArray());
+                else
+                    return OnEndSymbol;
+            }
             Actions.TryGetValue(nextToken.WithoutValue, out var act);
             // return null (SHIFT) if we don't find it.
             return act;
@@ -23,7 +29,7 @@ internal class LRParserDFA(IEqualityComparer<INonTerminal> nontermComparer, IEqu
         {
             return next.GetAction(new ListSpan<ISyntaxElementValue>(stack, 1), nextToken);
         }
-        throw new InvalidOperationException("Invalid Program");
+        throw new LRParserRuntimeUnexpectedInputException(stack[0]);
     }
 }
 

@@ -8,6 +8,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\Get.Lexer.SourceGenerator\Get.Lexer.SourceGenerator.csproj" ReferenceOutputAssembly="False" OutputItemType="Analyzer" />
     <ProjectReference Include="..\Get.Lexer\Get.Lexer.csproj" />
     <ProjectReference Include="..\Get.PLShared\Get.PLShared.csproj" />
     <ProjectReference Include="..\Get.RegexMachine\Get.RegexMachine.csproj" />

@@ -55,10 +55,11 @@ partial class RegexCompiler<T>
                     maxOrderCount = 1;
                     maxOrder = state.Order;
                     maxState = state;
-                } else
+                } else if (state.Order == maxOrder)
                 {
                     maxOrderCount++;
                 }
+                // else: we are not considering that rule
             }
         }
 
@@ -73,7 +74,8 @@ partial class RegexCompiler<T>
         }
         if (maxOrderCount > 1)
         {
-            throw new RegexCompilerException($"Conflict Detected! Id = {string.Join(", ", states.Where(s => s.IsAccepting && s.Order == maxOrder))}");
+            var rules = states.Where(s => s.IsAccepting && s.Order == maxOrder).Select(s => s.Rule).Distinct();
+            throw new RegexConflictCompilerException(rules.ToArray());
         }
         return maxState.Value;
     }
@@ -137,5 +139,3 @@ partial class RegexCompiler<T>
         }
     }
 }
-
-public class RuleConflictException(int id1, int id2) : Exception($"Rule {id1} and Rule {id2} conflicts!");

@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "Profile 1": {
+      "commandName": "DebugRoslynComponent",
+      "targetProject": "..\\Get.Lexer.Test\\Get.Lexer.Test.csproj"
+    }
+  }
+}

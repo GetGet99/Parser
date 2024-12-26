@@ -9,11 +9,45 @@ public static class LRParserRunner<TProgram>
         {
             var nextToken = nextTokenForLoop;
         rerun:
-            var act = dfa.GetAction(stack, nextToken);
+            ILRDFAAction? act;
+            try
+            {
+                act = dfa.GetAction(stack, nextToken);
+            } catch (LRParserRuntimeException e)
+            {
+                // error handling
+                if (stack.Count is 0)
+                    // i don't know
+                    throw;
+                stack[^1] = new ErrorTerminalValue(e);
+                while (stack.Count >= 1)
+                {
+                    try
+                    {
+                        act = dfa.GetAction(stack, nextToken);
+                        goto resolved;
+                    } catch
+                    {
+                        if (stack.Count >= 2)
+                        {
+                            // skip error token at ^1, remove ^2
+                            stack.RemoveAt(stack.Count - 2);
+                            continue;
+                        }
+                        // if no more to delete from stack,
+                        // break out of the loop and throw the original exception
+                        break;
+                    }
+                }
+                throw;
+            }
+        resolved:
             if (act is null) // SHIFT
             {
                 if (nextToken is null)
-                    throw new InvalidOperationException();
+                    throw new InvalidOperationException(
+                        "Can no longer shift the object, the DFA should be handling this."
+                    );
                 stack.Add(nextToken);
             }
             else if (act is LRDFAReduce reduce)
@@ -22,21 +56,27 @@ public static class LRParserRunner<TProgram>
                 var values = new ISyntaxElementValue[rule.Expressions.Count];
                 foreach (int i in ..values.Length)
                 {
-                    values[^(i+1)] = stack[^(i+1)];
+                    values[^(i + 1)] = stack[^(i + 1)];
                 }
                 stack.RemoveRange(stack.Count - values.Length, values.Length);
                 var val = rule.GetValue(values);
+                if (!val.WithoutValue.Equals(reduce.Rule.Target))
+                    throw new InvalidDataException("The returned symbol does not match the given rule");
                 stack.Add(val);
                 goto rerun; // rerun, as we do not want to read the next token yet.
-            } else if (act is ILRDFAAccept accept)
+            }
+            else if (act is ILRDFAAccept accept)
             {
                 if (stack[0] is not INonTerminalValue<TProgram> programNode)
-                    throw new InvalidOperationException("Not accepting on the program node");
+                    throw new InvalidOperationException("Not accepting on the program node or program does not implement INonTerminalValue<TProgram>");
                 return programNode.Value;
             }
         }
         throw new UnreachableException("Infinite() should be infinte? How?");
     }
+#if !NET8_0_OR_GREATER
+    class UnreachableException(string message) : Exception(message);
+#endif
     static IEnumerable<T?> Infinite<T>(IEnumerable<T?> values) where T : class
     {
         foreach (var val in values)
@@ -44,6 +84,22 @@ public static class LRParserRunner<TProgram>
         while (true)
             yield return null;
     }
+    
+}
+public class ErrorTerminalValue(LRParserRuntimeException exception) : ITerminalValue<LRParserRuntimeException>
+{
+    public ITerminal WithoutValue => ErrorTerminal.Singleton;
+    ISyntaxElement ISyntaxElementValue.WithoutValue => ErrorTerminal.Singleton;
+    public LRParserRuntimeException Value { get; } = exception;
+}
+public class LRParserRuntimeException(string message) : Exception(message);
+public class LRParserRuntimeUnexpectedInputException(ISyntaxElementValue unexpectedElement) : LRParserRuntimeException($"Unexpected element: {unexpectedElement}")
+{
+    public ISyntaxElementValue UnexpectedElement { get; } = unexpectedElement;
+}
+public class LRParserRuntimeUnexpectedEndingException(ISyntaxElement[] expectedInputs) : LRParserRuntimeException($"Expecting any of {string.Join(", ", (object?[])expectedInputs)}, but got no more inputs")
+{
+    public ISyntaxElement[] ExpectedInputs { get; } = expectedInputs;
 }
 public partial interface ICFGRule
 {

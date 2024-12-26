@@ -10,12 +10,12 @@
 	</PropertyGroup>
 
 	<ItemGroup>
-	  <Compile Include="..\Get.RegexMachine\RegexCompiler.cs" Link="RegexCompiler.cs" />
-	  <Compile Include="..\Get.RegexMachine\RegexCompiler.DFA.cs" Link="RegexCompiler.DFA.cs" />
-	  <Compile Include="..\Get.RegexMachine\RegexCompiler.NFA.cs" Link="RegexCompiler.NFA.cs" />
+	  <Compile Include="..\Get.Parser\LRParserDFA.cs" Link="LRParserImpl\LRParserDFA.cs" />
+	  <Compile Include="..\Get.Parser\LRParserDFAGen.cs" Link="LRParserImpl\LRParserDFAGen.cs" />
+	  <Compile Include="..\Get.Parser\LRParserRunner.cs" Link="LRParserImpl\LRParserRunner.cs" />
+	  <Compile Include="..\Get.Parser\RangeExtension.cs" Link="RangeExtension.cs" />
 	</ItemGroup>
 	<ItemGroup>
-		
 		<PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="4.6.0" PrivateAssets="all" />
 		<PackageReference Include="Microsoft.CodeAnalysis.Analyzers" Version="3.3.4" PrivateAssets="all" />
 		<PackageReference Include="PolySharp" Version="1.13.2">
@@ -24,5 +24,8 @@
 		</PackageReference>
 		<ProjectReference Include="..\Get.EasyCSharp.GeneratorTools\Get.EasyCSharp.GeneratorTools.csproj" ReferenceOutputAssembly="False" OutputItemType="Analyzer" />
 	</ItemGroup>
-	<Import Project="..\Get.Lexer.Shared\Get.Lexer.Shared.projitems" Label="Shared" />
+	<ItemGroup>
+	  <Folder Include="LRParserImpl\" />
+	</ItemGroup>
+	<Import Project="..\Get.Parser.Shared\Get.Parser.Shared.projitems" Label="Shared" />
 </Project>

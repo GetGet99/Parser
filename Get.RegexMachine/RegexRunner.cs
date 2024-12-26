@@ -1,4 +1,5 @@
 ﻿using Get.PLShared;
+using System.Security.Cryptography;
 namespace Get.RegexMachine;
 
 public static class RegexRunner<T> where T : class
@@ -35,13 +36,19 @@ public static class RegexRunner<T> where T : class
         }
 
         // No match found
+        // let's see if the start state is accepting (empty string)
+        if (startDFAState.Value is { } v)
+        {
+            return (v, "");
+        }
+        // No match found
         return null;
     }
     public static (T value, string matchedText, Position Start, Position End)? NextWithPosition(RegexCompiler<T>.DFAState startDFAState, ITextSeekable enumerator)
     {
         var currentDFAState = startDFAState;
         RegexCompiler<T>.DFAState? lastSuccessfulState = null;
-        int backtrackPosition = 0;
+        int backtrackPosition = enumerator.CurrentPosition;
         string matchedText = "";
         int lengthCheckpoint = 0;
         Position Start = new(0, -1), End = new(0, -1);
@@ -76,6 +83,16 @@ public static class RegexRunner<T> where T : class
             return (lastSuccessfulState.Value, matchedText, Start, End);
         }
 
+        // No match found
+        // reverse
+        if (lastSuccessfulState == null)
+            enumerator.Reverse(enumerator.CurrentPosition - backtrackPosition);
+        // let's see if the start state is accepting (empty string)
+        if (startDFAState.Value is { } v)
+        {
+            var pos = new Position(enumerator.LineNo, enumerator.CharNo);
+            return (v, "", pos, pos);
+        }
         // No match found
         return null;
     }

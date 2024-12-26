@@ -1,4 +1,5 @@
-﻿using System.Data;
+﻿using Microsoft.CodeAnalysis;
+using System.Data;
 using System.Diagnostics.CodeAnalysis;
 using System.Text.RegularExpressions;
 using static System.Net.Mime.MediaTypeNames;
@@ -29,7 +30,7 @@ partial class RegexCompiler<T> where T : class
 
     static (NFAState startState, NFAState endState) Generate(RegexVal<T> regex, int ruleId)
     {
-        var (startState, endState) = Generate(regex.Regex.GetEnumerator(), ruleId, regex.Order);
+        var (startState, endState, _) = Generate(regex.Regex.GetEnumerator(), ruleId, regex.Order);
         endState.Value = regex.Value;
         return (startState, endState);
     }
@@ -38,21 +39,21 @@ partial class RegexCompiler<T> where T : class
         switch (regex.Current)
         {
             case '\\':
-                if (!regex.MoveNext()) throw new Exception("'\\' expects another character");
+                if (!regex.MoveNext()) throw new RegexCompilerException("'\\' expects another character");
                 return regex.Current switch
                 {
                     'n' => '\n',
                     'r' => '\r',
                     't' => '\t',
-                    '\'' or '\"' or '.' or '[' or ']' or '(' or ')' or '\\' or '+' or '-' or '*' or '|' => regex.Current,
-                    _ => throw new Exception($"'\\{regex.Current}' is not defined escaped character"),
+                    '^' or '\'' or '\"' or '.' or '[' or ']' or '(' or ')' or '\\' or '+' or '-' or '*' or '|' => regex.Current,
+                    _ => throw new RegexCompilerException($"'\\{regex.Current}' is not defined escaped character"),
                 };
             default:
                 return regex.Current;
         }
 
     }
-    static (NFAState startState, NFAState endState) Generate(IEnumerator<char> regex, int Rule, int order, bool expectsClosedBracket = false)
+    static (NFAState startState, NFAState endState, bool wasClosedBracketConsumed) Generate(IEnumerator<char> regex, int Rule, int order, bool expectsClosedBracket = false)
     {
         NFAState startState = new(Rule, order);
         NFAState currentEndState = startState;
@@ -94,7 +95,7 @@ partial class RegexCompiler<T> where T : class
                     case '(':
                         {
                             var child = Generate(regex, Rule, order, expectsClosedBracket: true);
-                            var (childStart, childEnd, skip, terminate) = MoveNextPostProcess(child);
+                            var (childStart, childEnd, skip, terminate) = MoveNextPostProcess((child.startState, child.endState));
                             currentEndState.Epsilon.Add(childStart);
                             currentEndState = childEnd;
                             if (terminate) goto BreakWhile;
@@ -102,18 +103,20 @@ partial class RegexCompiler<T> where T : class
                             break;
                         }
                     case ')':
-                        if (!expectsClosedBracket) throw new Exception();
-                        return (startState, currentEndState);
+                        if (!expectsClosedBracket) throw new RegexCompilerException("Unexpected ')'");
+                        return (startState, currentEndState, true);
                     case '|':
                         {
                             NFAState newStartState = new(Rule, order);
-                            var next = Generate(regex, order, Rule);
+                            var next = Generate(regex, order, Rule, expectsClosedBracket: expectsClosedBracket);
                             newStartState.Epsilon.Add(startState);
                             newStartState.Epsilon.Add(next.startState);
                             currentEndState = new(Rule, order);
                             startState.Epsilon.Add(currentEndState);
                             next.startState.Epsilon.Add(currentEndState);
                             startState = newStartState;
+                            if (next.wasClosedBracketConsumed)
+                                goto case ')';
                         }
                         break;
                     case '[':
@@ -144,41 +147,64 @@ partial class RegexCompiler<T> where T : class
                 }
                 if (!regex.MoveNext()) break;
             }
-    BreakWhile:
+        BreakWhile:
         if (expectsClosedBracket)
-            throw new Exception("Expects ')'");
-        return (startState, currentEndState);
+            throw new RegexCompilerException("Expects ')'");
+        return (startState, currentEndState, false);
     }
     static (NFAState startState, NFAState endState) GenerateClass(IEnumerator<char> regex, int Rule, int order)
     {
+        bool inversionMode = false;
         NFAState startState = new(Rule, order);
         NFAState endState = new(Rule, order);
-        void AddChar(char c)
+        void AddOrRemoveChar(char c)
         {
+            if (inversionMode)
+            {
+                var hs = startState[c];
+                hs.Remove(endState);
+                if (hs.Count == 0)
+                    startState.RemoveTransition(c);
+            }
             startState[c].Add(endState);
         }
         char? previous = null;
-        while (regex.MoveNext() && regex.Current != ']')
+        if (!regex.MoveNext())
+            throw new RegexCompilerException("Expects ']'");
+        if (regex.Current is '^')
+        {
+            inversionMode = true;
+            for (char c = char.MinValue; c < char.MaxValue; c++)
+                startState[c].Add(endState);
+            // move next to skip ^ symbol
+            if (!regex.MoveNext())
+                throw new RegexCompilerException("Expects ']'");
+        }
+        if (regex.Current is ']')
+            // skip the loop
+            return (startState, endState);
+        do
         {
             char current = GetChar(regex);
             if (current == '-')
             {
-                if (previous == null) throw new Exception("Range: Expects a character before '-'");
-                if (!regex.MoveNext()) throw new Exception("Range: Expects a character after '-'");
+                if (previous == null) throw new RegexCompilerException("Range: Expects a character before '-'");
+                if (!regex.MoveNext()) throw new RegexCompilerException("Range: Expects a character after '-'");
                 current = GetChar(regex);
-                if (current == '-') throw new Exception("Range: unexpected '--'");
+                if (current == '-') throw new RegexCompilerException("Range: unexpected '-'");
                 for (char c = previous.Value; c <= current; c++)
                 {
-                    AddChar(c);
+                    AddOrRemoveChar(c);
                 }
                 previous = null;
             }
             else
             {
                 previous = current;
-                AddChar(current);
+                AddOrRemoveChar(current);
             }
-        }
+        } while (regex.MoveNext() && regex.Current != ']');
+
         return (startState, endState);
     }
     class NFAState(int rule, int order)
@@ -199,6 +225,10 @@ partial class RegexCompiler<T> where T : class
             }
         }
         public IEnumerable<char> TransitionKeys => Transitions.Keys;
+        internal void RemoveTransition(char c)
+        {
+            Transitions.Remove(c);
+        }
         public HashSet<NFAState> Epsilon { get => _epsilon ??= []; }
         public T? Value { get; set; }
         public bool IsAccepting => Value != null;
@@ -214,4 +244,11 @@ public class RegexCompilerException : Exception
     public RegexCompilerException(string message) : base(message) { }
     protected RegexCompilerException(string message, RegexCompilerException innerException) : base(message, innerException) { }
 }
-public class MultiRegexCompilerException(int id1, RegexCompilerException innerException) : RegexCompilerException($"Rule {id1} is invalid: {innerException.Message}", innerException);
+public class MultiRegexCompilerException(int id1, RegexCompilerException innerException) : RegexCompilerException($"Rule {id1} is invalid: {innerException.Message}", innerException)
+{
+    public int RuleId { get; } = id1;
+}
+public class RegexConflictCompilerException(int[] ids) : RegexCompilerException($"Conflict Detected! Id = {string.Join(", ", ids)}")
+{
+    public int[] ConflictIds { get; } = ids;
+}

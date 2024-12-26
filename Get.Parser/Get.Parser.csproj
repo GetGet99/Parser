@@ -10,4 +10,6 @@
     <ProjectReference Include="..\Get.RegexMachine\Get.RegexMachine.csproj" />
   </ItemGroup>
 
+  <Import Project="..\Get.Parser.Shared\Get.Parser.Shared.projitems" Label="Shared" />
+
 </Project>

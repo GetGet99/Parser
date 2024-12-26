@@ -35,19 +35,19 @@ void Assert(string? output, string expected)
 {
     Debug.Assert(output == expected);
 }
-Assert(RegexRunner<string>.Next(dfa, iter), Int); // 1
-Assert(RegexRunner<string>.Next(dfa, iter), Whitespace); // [ws]
-Assert(RegexRunner<string>.Next(dfa, iter), Plus); // +
-Assert(RegexRunner<string>.Next(dfa, iter), Whitespace); // [ws]
-Assert(RegexRunner<string>.Next(dfa, iter), Int); // 1
-Assert(RegexRunner<string>.Next(dfa, iter), Whitespace); // [ws]
-Assert(RegexRunner<string>.Next(dfa, iter), Times); // *
-Assert(RegexRunner<string>.Next(dfa, iter), Whitespace); // [ws]
-Assert(RegexRunner<string>.Next(dfa, iter), Int); // 2
-Assert(RegexRunner<string>.Next(dfa, iter), Whitespace); // [ws]
-Assert(RegexRunner<string>.Next(dfa, iter), Minus); // -
-Assert(RegexRunner<string>.Next(dfa, iter), Whitespace); // [ws]
-Assert(RegexRunner<string>.Next(dfa, iter), Id); // x
+Assert(RegexRunner<string>.Next(dfa, iter)!.Value.value, Int); // 1
+Assert(RegexRunner<string>.Next(dfa, iter)!.Value.value, Whitespace); // [ws]
+Assert(RegexRunner<string>.Next(dfa, iter)!.Value.value, Plus); // +
+Assert(RegexRunner<string>.Next(dfa, iter)!.Value.value, Whitespace); // [ws]
+Assert(RegexRunner<string>.Next(dfa, iter)!.Value.value, Int); // 1
+Assert(RegexRunner<string>.Next(dfa, iter)!.Value.value, Whitespace); // [ws]
+Assert(RegexRunner<string>.Next(dfa, iter)!.Value.value, Times); // *
+Assert(RegexRunner<string>.Next(dfa, iter)!.Value.value, Whitespace); // [ws]
+Assert(RegexRunner<string>.Next(dfa, iter)!.Value.value, Int); // 2
+Assert(RegexRunner<string>.Next(dfa, iter)!.Value.value, Whitespace); // [ws]
+Assert(RegexRunner<string>.Next(dfa, iter)!.Value.value, Minus); // -
+Assert(RegexRunner<string>.Next(dfa, iter)!.Value.value, Whitespace); // [ws]
+Assert(RegexRunner<string>.Next(dfa, iter)!.Value.value, Id); // x
 
 iter.Reset();
 /*
@@ -66,3 +66,12 @@ while (RegexRunner<string>.Next(dfa, iter) != null)
 t2 = DateTime.Now;
 Console.WriteLine($"Time used on average on runtime: {(t2 - t1).TotalNanoseconds / i}ns/call");
 */
+iter = Iter("1234 +");
+dfa = RegexCompiler<string>.GenerateDFA([
+    new(@"[0-9]+", Int),
+    new(@"[\t ]+", Whitespace),
+    new(@"", "fallback")
+], RegexConflictBehavior.Throw);
+Assert(RegexRunner<string>.Next(dfa, iter)!.Value.value, Int); // 1234
+Assert(RegexRunner<string>.Next(dfa, iter)!.Value.value, Whitespace); // [ws]
+Assert(RegexRunner<string>.Next(dfa, iter)!.Value.value, "fallback"); // can't match anything else
