@@ -1,19 +1,11 @@
 # Get's Parser and Lexer (ALPHA)
 
 A general lexer and LR(1) parser implementation in C#.
-It has not been tested througly yet.
-
-See Get.Parser.Test and Get.Lexer.Test for some sample
-of manual implementation. In the future, the pattern may
-change since source generator will take care of some of
-the manual work.
 
 ## Disclaimer
 
 Since this project is still in ALPHA state, bugs may
-(and is likely) occur. Please report the bugs via
-[Developer Sanctuary](https://dsc.gg/devsanx) Discord
-server `#gtudios` channel (prefered) or via the Issues tab.
+(and is likely) occur. Please report the bugs via the Issues tab.
 
 ## Lexer
 
