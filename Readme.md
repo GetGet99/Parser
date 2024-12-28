@@ -28,6 +28,9 @@ See Get.Lexer.Test for example. The recommended approach
 is to use the source generator (see `CustomLexerSourceGen.cs`),
 although manual approach is also possible (see `CustomLexer.cs`).
 
+Known Issue: Some complex regexes are not correctly parsed.
+We are currently implementing a fix for that.
+
 ## LR(1) parser
 
 The LR(1) parser takes in the list of context free grammar
@@ -40,7 +43,10 @@ The parser currently will error on ambiguous grammar with
 shift-reduce conflict or reduce-reduce conflict rather
 than having predefined conflict resolvation.
 
-This is intended to be used behind a source generator, but it is
-currently WIP. For now, all the work must be done manually.
+See Get.Parser.Test for example. The recommended approach
+is to use the source generator (see `TestSourceGenMath.cs`),
+although manual approach is also possible (see `TestRegex.DFA.cs`
+or `TestManualRuleAttr.DFA.cs` for example).
 
-See Get.Parser.Test for example (see `MathTests.cs` for example)
+Note that the source generator for parser is still not mature.
+It may not report all errors yet.
