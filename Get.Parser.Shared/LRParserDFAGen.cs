@@ -154,12 +154,13 @@ public class LRParserDFAGen(IEqualityComparer<INonTerminal> nontermComparer, IEq
             int PrecedenceOf(ITerminal? terminal)
             {
                 if (terminal is null) return -1;
-                // for something like minus vs unary minus
-                if (terminal is ITerminalWithCustomPrecedence t2)
-                {
-                    // we do the search for another terminal instead
-                    terminal = t2.PrecedenceTerminal;
-                }
+                // old code when i got the concept wrong
+                //// for something like minus vs unary minus
+                //if (terminal is ITerminalWithCustomPrecedence t2)
+                //{
+                //    // we do the search for another terminal instead
+                //    terminal = t2.PrecedenceTerminal;
+                //}
                 return Array.FindIndex(precedenceList, x => x.Terminals.Contains(terminal, termComparer));
             }
             ITerminal? LastTerm(IReadOnlyList<ISyntaxElement> elements)
@@ -173,8 +174,8 @@ public class LRParserDFAGen(IEqualityComparer<INonTerminal> nontermComparer, IEq
             (LRItem lrItem, int rulePrecedence) = (
                 from item in currentDFA.Items
                 where item.ExpressionAfter.Count is 0 && item.ReduceOn.Contains(term, termComparer)
-                select (item, PrecedenceOf(LastTerm(item.ExpressionBefore)))
-            ).MaxBy(x => x.Item2);
+                select (item, item.OriginalCFGRule is ICFGRuleWithPrecedence c && c.PrecedenceTerminal is { } pt ? PrecedenceOf(pt) : PrecedenceOf(LastTerm(item.ExpressionBefore)))
+            ).OrderByDescending(x => x.Item2).First();
 
             if (termPrecedence < 0 && rulePrecedence < 0)
                 // probably unintentional conflict as precedence is not declared
@@ -184,7 +185,7 @@ public class LRParserDFAGen(IEqualityComparer<INonTerminal> nontermComparer, IEq
                     ConflictedItems = [], // possibleReductions[0]
                     ConflictType = ConflictType.ShiftReduce
                 };
-            var assoc = precedenceList[termPrecedence].Associativity;
+            var assoc = precedenceList[termPrecedence < 0 ? rulePrecedence : termPrecedence].Associativity;
             // so because we want the rule defined earlier to be seen as higher precedence
             // we negate the number to get the reverse order to index
             termPrecedence = -termPrecedence;
@@ -469,16 +470,20 @@ public interface ILRDFAAction;
 public interface ISyntaxElement;
 public interface INonTerminal : ISyntaxElement;
 public interface ITerminal : ISyntaxElement;
-public interface ITerminalWithCustomPrecedence : ITerminal
+//public interface ITerminalWithCustomPrecedence : ITerminal
+//{
+//    ITerminal PrecedenceTerminal { get; }
+//}
+public interface ICFGRuleWithPrecedence : ICFGRule
 {
-    ITerminal PrecedenceTerminal { get; }
+    ITerminal? PrecedenceTerminal { get; }
 }
 public enum ConflictType
 {
     ShiftReduce,
     ReduceReduce
 }
-public class LRConflictException() : Exception("An resolved conflict was found")
+public class LRConflictException() : Exception("An unresolved conflict was found")
 {
     public required ConflictType ConflictType { get; init; }
     public required IReadOnlyList<LRItem> ConflictedItems { get; init; }
@@ -514,5 +519,14 @@ class SyntaxElementComparer(IEqualityComparer<ITerminal> termComparer, IEquality
         if (obj is ITerminal term) return termComparer.GetHashCode(term);
         if (obj is INonTerminal nonterm) return nontermComparer.GetHashCode(nonterm);
         return obj.GetHashCode();
+    }
+}
+static class Extension
+{
+    // Syntax sugar helper
+    public static void Deconstruct<K, V>(this KeyValuePair<K, V> kv, out K k, out V v)
+    {
+        k = kv.Key;
+        v = kv.Value;
     }
 }

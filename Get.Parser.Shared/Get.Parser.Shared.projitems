@@ -10,5 +10,10 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="$(MSBuildThisFileDirectory)Attributes.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)LRParserDFA.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)LRParserDFAGen.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)LRParserRunner.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)ParserBase.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)RangeExtension.cs" />
   </ItemGroup>
 </Project>

@@ -12,6 +12,8 @@
 	<ItemGroup>
 		<ProjectReference Include="..\Get.PLShared\Get.PLShared.csproj" />
 		<PackageReference Include="PolySharp" Version="1.14.1" PrivateAssets="all" />
+		<ProjectReference Include="..\Get.Parser.SourceGenerator\Get.Parser.SourceGenerator.csproj" ReferenceOutputAssembly="False" OutputItemType="Analyzer" />
+		<ProjectReference Include="..\Get.Parser\Get.Parser.csproj" />
 	</ItemGroup>
 
 </Project>

@@ -113,6 +113,7 @@ Global
 	EndGlobalSection
 	GlobalSection(SharedMSBuildProjectFiles) = preSolution
 		Get.Lexer.Shared\Get.Lexer.Shared.projitems*{21ad9d2d-a0ce-47e9-8dca-2e6d94ccd570}*SharedItemsImports = 5
+		Get.Lexer.Shared\Get.Lexer.Shared.projitems*{29dbf0ff-1f4a-4d60-8913-b7ed7b3c9a76}*SharedItemsImports = 5
 		Get.Parser.Shared\Get.Parser.Shared.projitems*{29dbf0ff-1f4a-4d60-8913-b7ed7b3c9a76}*SharedItemsImports = 5
 		Get.Lexer.Shared\Get.Lexer.Shared.projitems*{620ba97d-7c9a-47f0-ae9e-7271f76f1dad}*SharedItemsImports = 13
 		Get.Lexer.Shared\Get.Lexer.Shared.projitems*{68c78669-5431-4c8e-b790-c6dc0260cbb5}*SharedItemsImports = 5

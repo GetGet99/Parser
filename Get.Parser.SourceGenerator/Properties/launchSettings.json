@@ -1,8 +1,8 @@
 {
   "profiles": {
-    "Profile 1": {
+    "Source Gen: Get.Parser.Test": {
       "commandName": "DebugRoslynComponent",
-      "targetProject": "..\\Get.Lexer.Test\\Get.Lexer.Test.csproj"
+      "targetProject": "..\\Get.Parser.Test\\Get.Parser.Test.csproj"
     }
   }
 }

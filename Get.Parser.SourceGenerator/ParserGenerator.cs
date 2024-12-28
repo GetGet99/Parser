@@ -1,19 +1,22 @@
 ﻿using Get.EasyCSharp.GeneratorTools;
 using Get.EasyCSharp.GeneratorTools.SyntaxCreator.Members;
+using Get.Lexer;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
-using System.Data;
-using System.Linq;
 using System.Text;
 
 namespace Get.Parser.SourceGenerator;
 [Generator]
-[AddAttributeConverter(typeof(ParserAttribute<TempType>))]
+[AddAttributeConverter(typeof(ParserAttribute), ParametersAsString = "startNode: 0")]
 [AddAttributeConverter(typeof(RuleAttribute))]
 [AddAttributeConverter(typeof(TypeAttribute<TempType>))]
-[AddAttributeConverter(typeof(RegexAttribute<int>), ParametersAsString = "\"\", \"\"", StructName = "RegexAttributeGenericWrapper")]
-partial class ParserGenerator : AttributeBaseGenerator<LexerAttributeBase, LexerGenerator.LexerAttributeWarpper, TypeDeclarationSyntax, INamedTypeSymbol>
+[AddAttributeConverter(typeof(Lexer.TypeAttribute<TempType>), MethodName = "LexerTypeAttrGen", StructName = "LexerTypeAttributeWrapper")]
+[AddAttributeConverter(typeof(RegexAttribute<TempType>), ParametersAsString = "\"\", \"\"")]
+[AddAttributeConverter(typeof(PrecedenceAttribute))]
+partial class ParserGenerator : AttributeBaseGenerator<ParserAttribute, ParserGenerator.ParserAttributeWarpper, TypeDeclarationSyntax, INamedTypeSymbol>
 {
+    static RuleAttrSyntaxParser RuleAttrSyntaxParser { get; } = new RuleAttrSyntaxParser();
+    static PrecedenceAttrSyntaxParser PrecedenceAttrSyntaxParser { get; } = new PrecedenceAttrSyntaxParser();
     class NonLocalizableString(string s) : LocalizableString
     {
         public string DiagonosticString { get; } = s;
@@ -21,56 +24,48 @@ partial class ParserGenerator : AttributeBaseGenerator<LexerAttributeBase, Lexer
         protected override int GetHash() => DiagonosticString.GetHashCode();
         protected override string GetText(IFormatProvider? formatProvider) => DiagonosticString;
     }
-    readonly static DiagnosticDescriptor NotLexerBase = new(
-        "GL1001",
-        new NonLocalizableString("Type does not implement Get.Lexer.LexerBase"),
-        new NonLocalizableString("Type must not implement Get.Lexer.LexerBase"),
-        "Get.Lexer",
+    readonly static DiagnosticDescriptor NotParserBase = new(
+        "GP1001",
+        new NonLocalizableString("Type does not implement Get.Parser.ParserBase"),
+        new NonLocalizableString("Type must not implement Get.Parser.ParserBase"),
+        "Get.Parser",
         DiagnosticSeverity.Error,
         true
     );
-    readonly static DiagnosticDescriptor RegexReturnWrongType = new(
-        "GL1002",
-        new NonLocalizableString("Regex does not return the correct type"),
-        new NonLocalizableString("Regex must return the value of type {0}"),
-        "Get.Lexer",
+    readonly static DiagnosticDescriptor ParserRuleSyntaxErrorBase = new(
+        "GP1002",
+        new NonLocalizableString($"Bad arguments to {nameof(RuleAttribute)}"),
+        new NonLocalizableString("{0} {1}"),
+        "Get.Parser",
         DiagnosticSeverity.Error,
         true
     );
-    readonly static DiagnosticDescriptor RegexReturnTypeAmbiguous = new(
-        "GL1003",
-        new NonLocalizableString("Regex return type is ambiguous"),
-        new NonLocalizableString("Regex return type is ambiguous. Please specify type using Type<T>."),
-        "Get.Lexer",
+    readonly static DiagnosticDescriptor ParserRuleNoTypeParam = new(
+        "GP1003",
+        new NonLocalizableString("The given element is used as an argument, but it has no type."),
+        new NonLocalizableString("{0} was used as an argument ({1}), but it has no type."),
+        "Get.Parser",
         DiagnosticSeverity.Error,
         true
     );
-    readonly static DiagnosticDescriptor ImplementationMissing = new(
-        "GL1004",
-        new NonLocalizableString("The implementation of the method is missing"),
-        new NonLocalizableString("The implementation of the method {0} is missing. Please implement it."),
-        "Get.Lexer",
-        DiagnosticSeverity.Error,
-        true
-    );
-    readonly static DiagnosticDescriptor NoOutputOnTypedRegex = new(
-        "GL1005",
-        new NonLocalizableString($"{nameof(RegexAttribute.ShouldOutputToken)} is false for typed attribute"),
-        new NonLocalizableString($"{nameof(RegexAttribute.ShouldOutputToken)} must be true for typed attribute"),
-        "Get.Lexer",
+    readonly static DiagnosticDescriptor ParserPrecedenceSyntaxErrorBase = new(
+        "GP1004",
+        new NonLocalizableString($"Bad arguments to {nameof(PrecedenceAttribute)}"),
+        new NonLocalizableString("{0} {1}"),
+        "Get.Parser",
         DiagnosticSeverity.Error,
         true
     );
     protected override string? OnPointVisit(OnPointVisitArguments args)
     {
-        if (!(args.Symbol.BaseType?.ToString().StartsWith("Get.Lexer.LexerBase") ?? false))
+        if (!(args.Symbol.BaseType?.ToString().StartsWith("Get.Parser.ParserBase") ?? false))
         {
-            args.Diagnostics.Add(Diagnostic.Create(NotLexerBase, args.SyntaxNode.BaseList?.GetLocation() ?? args.SyntaxNode.Identifier.GetLocation()));
+            args.Diagnostics.Add(Diagnostic.Create(NotParserBase, args.SyntaxNode.BaseList?.GetLocation() ?? args.SyntaxNode.Identifier.GetLocation()));
             return null;
         }
-        if (args.Symbol.BaseType.TypeArguments.Length != 2)
+        if (args.Symbol.BaseType.TypeArguments.Length != 3)
         {
-            args.Diagnostics.Add(Diagnostic.Create(NotLexerBase, args.SyntaxNode.BaseList?.GetLocation() ?? args.SyntaxNode.Identifier.GetLocation()));
+            args.Diagnostics.Add(Diagnostic.Create(NotParserBase, args.SyntaxNode.BaseList?.GetLocation() ?? args.SyntaxNode.Identifier.GetLocation()));
             return null;
         }
         return OnPointVisit2(args).JoinDoubleNewLine();
@@ -80,181 +75,291 @@ partial class ParserGenerator : AttributeBaseGenerator<LexerAttributeBase, Lexer
         var genContext = args.GenContext;
         var diagnostics = args.Diagnostics;
         var lexerSymbol = args.Symbol;
-        var lexerTokensType = args.AttributeDatas[0].Wrapper.TLexerTokens;
-        var members = lexerTokensType.GetMembers();
-        Dictionary<int, StringBuilder> genereatedRegexes = [];
-        foreach (var token in members)
+        var thisType = args.Symbol;
+        var baseType = args.Symbol.BaseType!;
+        var terminalType = baseType.TypeArguments[0];
+        var nonTerminalType = baseType.TypeArguments[1];
+        var associativityType = genContext.SemanticModel.Compilation.GetTypeByMetadataName(typeof(Associativity).FullName);
+        var keywordType = (ITypeSymbol)baseType.GetMembers("Keywords")[0];
+        var nonTerminalFT = new FullType(nonTerminalType);
+        var terminalFT = new FullType(terminalType);
+
+        // PASS 1: COLLECT TYPE INFORMATION
+        Dictionary<object, ITypeSymbol?> TerminalTypes = [];
+        Dictionary<object, ITypeSymbol?> NonTerminalTypes = [];
+        if (args.AttributeDatas[0].Wrapper.UseGetLexerTypeInformation)
         {
-            args.CancellationToken.ThrowIfCancellationRequested();
-            var TypeAttr = AttributeHelper.TryGetAttributeAnyGeneric<TypeAttribute<TempType>, TypeAttributeWarpper>(genContext, token, AttributeDataToTypeAttribute);
-            var Regexes = AttributeHelper.GetAttributesAnyGeneric<RegexAttribute, RegexAttributeWarpper>(genContext, token, (attrdata, compilation) =>
+            foreach (var t in terminalType.GetMembers())
             {
-                if ((!attrdata.AttributeClass?.IsGenericType) ?? false)
-                    return AttributeDataToRegexAttribute(attrdata, compilation);
-                return null;
-            }).ToArray();
-            var typedRegexes = AttributeHelper.GetAttributesAnyGeneric<RegexAttribute<TempType>, RegexAttributeGenericWrapper>(genContext, token, (attrdata, compilation) =>
-            {
-                if (attrdata.AttributeClass?.IsGenericType ?? false)
-                    return AttributeDataToRegexAttributeGenericWrapper(attrdata, compilation);
-                return null;
-            }).ToArray();
-            bool failedTypeCheck = false;
-            var regexType = TypeAttr?.Serialized.T;
-        RegexTypeCheck:
-            if (regexType is not null)
-            {
-                args.CancellationToken.ThrowIfCancellationRequested();
-                // TYPE CHECKING
-                foreach (var (RealAttributeData, _) in Regexes)
+                if (t is IFieldSymbol fieldSymbol)
                 {
-                    failedTypeCheck = true;
-                    var syntax = RealAttributeData.ApplicationSyntaxReference;
-                    diagnostics.Add(Diagnostic.Create(
-                        RegexReturnWrongType,
-                        syntax is null ? null : Location.Create(syntax.SyntaxTree, syntax.Span),
-                        regexType
-                    ));
-                }
-                foreach (var (RealAttributeData, attr2) in typedRegexes)
-                {
-                    if (!attr2.ShouldOutputToken)
-                    {
-                        var syntax2 = RealAttributeData.ApplicationSyntaxReference;
-                        diagnostics.Add(Diagnostic.Create(
-                            NoOutputOnTypedRegex,
-                            syntax2 is null ? null : Location.Create(syntax2.SyntaxTree, syntax2.Span)
-                        ));
-                    }
-                    if (attr2.T.IsSubclassFrom(regexType))
-                        continue;
-                    failedTypeCheck = true;
-                    var syntax = RealAttributeData.ApplicationSyntaxReference;
-                    diagnostics.Add(Diagnostic.Create(
-                        RegexReturnWrongType,
-                        syntax is null ? null : Location.Create(syntax.SyntaxTree, syntax.Span),
-                        regexType
-                    ));
-                }
-            }
-            else
-            {
-                // TYPE CHECKING
-                // no type is declared
-                var allTypes =
-                    (from tr in typedRegexes
-                     select tr.Serialized.T).ToArray();
-                if (allTypes.Length > 0)
-                {
-                    if (allTypes.Any(x => !x.Equals(allTypes[0], SymbolEqualityComparer.Default)))
-                    {
-                        // the return type is ambiguous
-                        failedTypeCheck = true;
-                        diagnostics.Add(Diagnostic.Create(
-                            RegexReturnTypeAmbiguous,
-                            token.Locations[0]
-                        ));
-                    }
+                    var value = fieldSymbol.ConstantValue;
+                    if (value is null) continue;
+                    var attrs = t.GetAttributes();
+                    var type = AttributeHelper.TryGetAttributeAnyGeneric<Lexer.TypeAttribute<TempType>, LexerTypeAttributeWrapper>(genContext, t, LexerTypeAttrGen);
+                    if (type.HasValue)
+                        // on lexer, there is type checking
+                        // but we can just take the type here as
+                        // the user can see the error from the lexer side
+                        TerminalTypes[value] = type.Value.Serialized.T;
                     else
                     {
-                        // set the type
-                        regexType = allTypes[0];
-                        // repeat the type check using the implicit type
-                        goto RegexTypeCheck;
+                        // retry on regex attribute
+                        var typedRegexes = AttributeHelper.GetAttributesAnyGeneric<RegexAttribute<TempType>, RegexAttributeWarpper>(genContext, t, (attrdata, compilation) =>
+                        {
+                            if (attrdata.AttributeClass?.IsGenericType ?? false)
+                                return AttributeDataToRegexAttribute(attrdata, compilation);
+                            return null;
+                        });
+                        var types = typedRegexes.Select(x => x.Serialized.T).Distinct(SymbolEqualityComparer.Default).ToList();
+                        if (types.Count is 1)
+                            TerminalTypes[value] = (ITypeSymbol)types[0]!;
+                        else
+                            // the type is ambiguous, lexer won't allow it
+                            // but we will just say it has no type here
+                            TerminalTypes[value] = null;
                     }
                 }
             }
-            foreach (var (attrdata, typedRegex) in typedRegexes)
+        }
+        else
+        {
+            foreach (var t in terminalType.GetMembers())
             {
-                args.CancellationToken.ThrowIfCancellationRequested();
-                if (!lexerSymbol.GetMembers(typedRegex.ImplementationMethodName).Any())
+                if (t is IFieldSymbol fieldSymbol)
                 {
-                    var syntax = attrdata.ApplicationSyntaxReference;
-                    diagnostics.Add(Diagnostic.Create(
-                        ImplementationMissing,
-                        syntax is null ? null : Location.Create(syntax.SyntaxTree, syntax.Span),
-                        typedRegex.ImplementationMethodName
-                    ));
+                    var value = fieldSymbol.ConstantValue;
+                    if (value is null) continue;
+                    var attrs = t.GetAttributes();
+                    var type = AttributeHelper.TryGetAttributeAnyGeneric<TypeAttribute<TempType>, TypeAttributeWarpper>(genContext, t, AttributeDataToTypeAttribute);
+                    if (type.HasValue)
+                        TerminalTypes[value] = type.Value.Serialized.T;
+                    else
+                        TerminalTypes[value] = null;
                 }
-                yield return
-                    $"""
-                    private partial {new FullType(typedRegex.T)} {typedRegex.ImplementationMethodName}();
-                    """;
             }
-            if (failedTypeCheck)
-                continue;
-            foreach (var (_, r) in typedRegexes)
+        }
+        foreach (var nt in nonTerminalType.GetMembers())
+        {
+            if (nt is IFieldSymbol fieldSymbol)
             {
-                if (!genereatedRegexes.TryGetValue(r.State, out var sb))
+                var value = fieldSymbol.ConstantValue;
+                if (value is null) continue;
+                var attrs = nt.GetAttributes();
+                var type = AttributeHelper.TryGetAttributeAnyGeneric<TypeAttribute<TempType>, TypeAttributeWarpper>(genContext, nt, AttributeDataToTypeAttribute);
+                if (type.HasValue)
+                    NonTerminalTypes[value] = type.Value.Serialized.T;
+                else
+                    NonTerminalTypes[value] = null;
+            }
+        }
+        // PASS 2: DO STUFF
+        // PRECEDENCE
+        List<PrecedenceItem> precedenceList = [];
+        var pd = AttributeHelper.TryGetAttribute<PrecedenceAttribute, PrecedenceAttributeWarpper>(genContext, thisType, (_, comp) => new PrecedenceAttributeWarpper(comp));
+        if (pd.HasValue)
+        {
+            var (raw, _) = pd.Value;
+            var precedenceArgs = raw.ConstructorArguments[0].Values;
+            if (associativityType is null)
+                goto exit;
+            try
+            {
+                precedenceList = PrecedenceAttrSyntaxParser.Parse(precedenceArgs, terminalType, associativityType);
+            }
+            catch (LRParserRuntimeUnexpectedInputException e)
+            {
+                var syn = raw.ApplicationSyntaxReference;
+                args.Diagnostics.Add(Diagnostic.Create(
+                    ParserRuleSyntaxErrorBase,
+                    syn is null ? thisType.Locations[0] : Location.Create(syn.SyntaxTree, syn.Span),
+                    "Unexpected",
+                    e.UnexpectedElement
+                ));
+                goto exit;
+            }
+            catch (LRParserRuntimeUnexpectedEndingException e)
+            {
+                var syn = raw.ApplicationSyntaxReference;
+                args.Diagnostics.Add(Diagnostic.Create(
+                    ParserRuleSyntaxErrorBase,
+                    syn is null ? thisType.Locations[0] : Location.Create(syn.SyntaxTree, syn.Span),
+                    "Expected",
+                    $"{string.Join(", ", (object?[])e.ExpectedInputs)} after the last parameter"
+                ));
+                goto exit;
+            }
+        }
+    exit:
+        StringBuilder sb = new();
+
+        foreach (var nt in nonTerminalType.GetMembers())
+        {
+            if (nt is not IFieldSymbol fieldSymbol) continue;
+            var value = fieldSymbol.ConstantValue;
+            if (value is null) continue;
+
+            foreach (var (raw, _) in AttributeHelper.GetAttributes<RuleAttribute, RuleAttributeWarpper>(genContext, nt, (_, comp) => new RuleAttributeWarpper(comp)))
+            {
+                var ruleargs = raw.ConstructorArguments[0].Values;
+                Rule rule;
+                try
                 {
-                    genereatedRegexes[r.State] = sb = new();
+                    rule = RuleAttrSyntaxParser.Parse(ruleargs, terminalType, nonTerminalType, keywordType);
                 }
-                sb.AppendLine($"""
-                    new(
-                        @"{r.Regex}",
-                        MakeFunc(
-                            {new FullType(lexerTokensType)}.{token.Name},
-                            {r.ImplementationMethodName}
-                        ),
-                        {r.Order}
+                catch (LRParserRuntimeUnexpectedInputException e)
+                {
+                    var syn = raw.ApplicationSyntaxReference;
+                    args.Diagnostics.Add(Diagnostic.Create(
+                        ParserRuleSyntaxErrorBase,
+                        syn is null ? nt.Locations[0] : Location.Create(syn.SyntaxTree, syn.Span),
+                        "Unexpected",
+                        e.UnexpectedElement
+                    ));
+                    continue;
+                }
+                catch (LRParserRuntimeUnexpectedEndingException e)
+                {
+                    var syn = raw.ApplicationSyntaxReference;
+                    args.Diagnostics.Add(Diagnostic.Create(
+                        ParserRuleSyntaxErrorBase,
+                        syn is null ? nt.Locations[0] : Location.Create(syn.SyntaxTree, syn.Span),
+                        "Expected",
+                        $"{string.Join(", ", (object?[])e.ExpectedInputs)} after the last parameter"
+                    ));
+                    continue;
+                }
+                static string ConstantParameterToString(Option option)
+                {
+                    // TODO
+                    if (option.ConstantParameterValue is null)
+                        return "null";
+                    return option.ConstantParameterValue.ToString();
+                }
+                var nttype = NonTerminalTypes[value];
+                var (eles, opts, red) = rule;
+
+                StringBuilder reduceArgs = new();
+                foreach (var (idx, ele) in eles.WithIndex())
+                {
+                    if (ele.AsParameter is null) continue;
+                    var type = (ele.Raw.IsTerminal ? TerminalTypes : NonTerminalTypes)[ele.Raw.RawEnum];
+                    if (type is not null)
+                    {
+                        reduceArgs.AppendLine(
+                            $"""
+                            {ele.AsParameter}: GetValue<{new FullType(type)}>(x[{idx}]),
+                            """
+                        );
+                    } else
+                    {
+                        var syn = raw.ApplicationSyntaxReference;
+                        args.Diagnostics.Add(Diagnostic.Create(
+                            ParserRuleNoTypeParam,
+                            location: syn is null ? nt.Locations[0] : Location.Create(syn.SyntaxTree, syn.Span),
+                            $"({(ele.Raw.IsTerminal ? "Terminal" : "NonTerminal")}){ele.Raw.RawEnum}",
+                            ele.AsParameter
+                        ));
+                        reduceArgs.AppendLine(
+                            $"""
+                            // the given token does not have a type
+                            {ele.AsParameter}: default,
+                            """
+                        );
+                    }
+                }
+                foreach (var opt in opts)
+                {
+                    reduceArgs.AppendLine(
+                        $"""
+                        {opt.ParameterName}: {ConstantParameterToString(opt)},
+                        """
+                    );
+                }
+                var len = EasyCSharp.GeneratorTools.Extension.InSourceNewLine.Length + 1 /* comma */;
+                reduceArgs.Remove(reduceArgs.Length - len, len);
+
+                string reduceMethodCall = red switch
+                {
+                    ReduceMethod method => $"""
+                        {method.Name}(
+                            {reduceArgs.ToString().IndentWOF(1)}
+                        )
+                        """,
+                    ReduceConstructor constructor => $"""
+                        new {new FullType(constructor.Type_)}(
+                            {reduceArgs.ToString().IndentWOF(1)}
+                        )
+                        """,
+                    _ => throw new InvalidCastException()
+                };
+                sb.AppendLine($$"""
+                    CreateRule(
+                        // NonTerminal.{{nt.Name}}
+                        ({{nonTerminalFT}}){{value}},
+                        [
+                            {{string.Join("\n",
+                                from ele in eles
+                                select $"""
+                                    // {(ele.Raw.IsTerminal ? "Terminal" : "NonTerminal")}.???
+                                    Syntax(({(ele.Raw.IsTerminal ? terminalFT : nonTerminalFT)}){ele.Raw.RawEnum}),
+                                    """
+                            ).IndentWOF(2)}}
+                        ],
+                        x => {
+                            {{(
+                                nttype is null ?
+                                    $"""
+                                    {reduceMethodCall};
+                                    return CreateValue(({nonTerminalFT}){value});
+                                    """ :
+                                    $"""
+                                    return CreateValue<{new FullType(nttype)}>(
+                                        ({nonTerminalFT}){value},
+                                        {reduceMethodCall.IndentWOF(1)}
+                                    );
+                                    """
+                            ).IndentWOF(2)}}
+                        }
                     ),
                     """);
             }
-            foreach (var (_, r) in Regexes)
-            {
-                if (!genereatedRegexes.TryGetValue(r.State, out var sb))
-                {
-                    genereatedRegexes[r.State] = sb = new();
-                }
-                if (r.ShouldOutputToken)
-                {
-                    sb.AppendLine($"""
-                        new(
-                            @"{r.Regex}",
-                            MakeFunc({new FullType(lexerTokensType)}.{token.Name}),
-                            {r.Order}
-                        ),
-                        """);
-                }
-                else
-                {
-                    sb.AppendLine($"""
-                        new(
-                            @"{r.Regex}",
-                            Empty(),
-                            {r.Order}
-                        ),
-                        """);
-                }
-            }
         }
-        var baseType = lexerSymbol.BaseType!;
-        var stateType = new FullType(baseType.TypeArguments[0]);
-        var termType = new FullType(baseType.TypeArguments[1]);
-        StringBuilder sb2 = new();
-        foreach (var kvp in genereatedRegexes)
+        StringBuilder precedenceSB = new();
+        foreach (var precedence in precedenceList)
         {
-            var (state, rules) = (kvp.Key, kvp.Value);
-            sb2.AppendLine(
-                $$"""
-                dict[({{stateType}}){{state}}] = Get.RegexMachine.RegexCompiler<Func<Get.PLShared.IToken<{{termType}}>?>>.GenerateDFA([
-                    {{rules.ToString().IndentWOF()}}
-                ], Get.RegexMachine.RegexConflictBehavior.Throw);
+            precedenceSB.AppendLine(
+                $"""
+                ([
+                    {string.Join(
+                        ",\n",
+                        from term in precedence.RawEnumTerminals
+                        select $"Syntax(({terminalFT}){term})").IndentWOF(1)
+                    }
+                ], Associativity.{precedence.Associativity}),
                 """
             );
         }
+        
         yield return $$"""
-        public override Dictionary<{{stateType}}, Get.RegexMachine.RegexCompiler<Func<Get.PLShared.IToken<{{termType}}>?>>.DFAState> DFASourceGenOutput()
-        {
-            Dictionary<{{stateType}}, Get.RegexMachine.RegexCompiler<Func<Get.PLShared.IToken<{{termType}}>?>>.DFAState> dict = [];
-            {{sb2.ToString().IndentWOF()}}
-            return dict;
-        }
-        """;
+            protected override {{FullType.Of<ILRParserDFA>()}} GenerateDFA()
+            {
+                return new {{FullType.Of<LRParserDFAGen>()}}({{FullType.Of<EqualityComparer<INonTerminal>>()}}.Default, {{FullType.Of<EqualityComparer<ITerminal>>()}}.Default).CreateDFA(
+                    [
+                        {{sb.ToString().IndentWOF(3)}}
+                    ],
+                    Syntax(({{nonTerminalFT}}){{args.AttributeDatas[0].Wrapper.startNode}}),
+                    [
+                        // precedence
+                        {{precedenceSB.ToString().IndentWOF(3)}}
+                    ]
+                );
+            }
+            """;
     }
-    protected override LexerAttributeWarpper? TransformAttribute(AttributeData attributeData, Compilation compilation)
+    protected override ParserAttributeWarpper? TransformAttribute(AttributeData attributeData, Compilation compilation)
     {
-        return AttributeDataToLexerAttribute(attributeData, compilation);
+        return AttributeDataToParserAttribute(attributeData, compilation);
     }
 }
 // just for sake of being able to use AddAttributeConverter

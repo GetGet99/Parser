@@ -1,15 +1,17 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
-  <PropertyGroup>
-    <TargetFramework>net8.0</TargetFramework>
-    <ImplicitUsings>enable</ImplicitUsings>
-    <Nullable>enable</Nullable>
-  </PropertyGroup>
+	<PropertyGroup>
+		<TargetFramework>netstandard2.0</TargetFramework>
+		<ImplicitUsings>enable</ImplicitUsings>
+		<Nullable>enable</Nullable>
+		<LangVersion>12</LangVersion>
+	</PropertyGroup>
 
-  <ItemGroup>
-    <ProjectReference Include="..\Get.RegexMachine\Get.RegexMachine.csproj" />
-  </ItemGroup>
+	<Import Project="..\Get.Parser.Shared\Get.Parser.Shared.projitems" Label="Shared" />
 
-  <Import Project="..\Get.Parser.Shared\Get.Parser.Shared.projitems" Label="Shared" />
+	<ItemGroup>
+		<ProjectReference Include="..\Get.PLShared\Get.PLShared.csproj" />
+		<PackageReference Include="PolySharp" Version="1.14.1" PrivateAssets="all" />
+	</ItemGroup>
 
 </Project>

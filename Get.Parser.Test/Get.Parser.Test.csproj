@@ -10,6 +10,7 @@
 
 	<ItemGroup>
 		<ProjectReference Include="..\Get.Lexer\Get.Lexer.csproj" />
+		<ProjectReference Include="..\Get.Parser.SourceGenerator\Get.Parser.SourceGenerator.csproj" ReferenceOutputAssembly="False" OutputItemType="Analyzer" />
 		<ProjectReference Include="..\Get.Parser\Get.Parser.csproj" />
 	</ItemGroup>
 

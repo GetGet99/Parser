@@ -8,12 +8,6 @@
 		<EnforceExtendedAnalyzerRules>true</EnforceExtendedAnalyzerRules>
 		<IsRoslynComponent>true</IsRoslynComponent>
 	</PropertyGroup>
-
-	<ItemGroup>
-	  <Compile Include="..\Get.RegexMachine\RegexCompiler.cs" Link="RegexCompiler.cs" />
-	  <Compile Include="..\Get.RegexMachine\RegexCompiler.DFA.cs" Link="RegexCompiler.DFA.cs" />
-	  <Compile Include="..\Get.RegexMachine\RegexCompiler.NFA.cs" Link="RegexCompiler.NFA.cs" />
-	</ItemGroup>
 	<ItemGroup>
 		
 		<PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="4.6.0" PrivateAssets="all" />
@@ -23,6 +17,7 @@
 			<IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
 		</PackageReference>
 		<ProjectReference Include="..\Get.EasyCSharp.GeneratorTools\Get.EasyCSharp.GeneratorTools.csproj" ReferenceOutputAssembly="False" OutputItemType="Analyzer" />
+		<ProjectReference Include="..\Get.RegexMachine\Get.RegexMachine.csproj" />
 	</ItemGroup>
 	<Import Project="..\Get.Lexer.Shared\Get.Lexer.Shared.projitems" Label="Shared" />
 </Project>

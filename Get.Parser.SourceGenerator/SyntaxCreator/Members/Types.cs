@@ -16,6 +16,28 @@ record struct FullType(string TypeWithNamespace, bool Nullable = false) : ISynta
     public string StringRepresentaion => ToString();
 
     public override string ToString() => TypeWithNamespace;
+    public static FullType Of<T>(bool Nullable = false)
+    {
+        return new FullType(Type2String(typeof(T)), Nullable);
+    }
+    static string Type2String(System.Type type)
+    {
+
+        if (type.IsGenericType)
+        {
+            var name = $"global::{type.FullName}";
+            int typeIndex = name.IndexOf('`');
+            string baseType = name[..typeIndex];
+            var typeArguments = type.GetGenericArguments();
+
+            string arguments = string.Join(", ", typeArguments.Select(Type2String));
+            return $"{baseType}<{arguments}>";
+        }
+        else
+        {
+            return $"global::{type.FullName}";
+        }
+    }
 }
 abstract class Type : IType
 {

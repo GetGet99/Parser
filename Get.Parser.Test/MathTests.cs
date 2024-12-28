@@ -1,5 +1,4 @@
-﻿
-using Get.Lexer;
+﻿using Get.Lexer;
 using Get.PLShared;
 using Get.RegexMachine;
 using System.Diagnostics;
@@ -19,39 +18,6 @@ static class MathTests
         absBar = "|",
         number = "NUMBER";
 
-    static string NewLine =
-        """
-        a
-        b
-        """[1..^1];
-    const string TestCases =
-        """
-        1 + 1 = 2  
-        2 - 1 = 1  
-        3 * 4 = 12  
-        8 / 2 = 4  
-        -3 = -3  
-        +4 = 4  
-        -(-5) = 5
-        -3 + 1 = -2
-        2 + 3 * 4 = 14  
-        2 * 3 + 4 = 10  
-        2 + 3 * 4 - 5 = 9  
-        (2 + 3) * 4 = 20  
-        2 * (3 + 4) = 14  
-        (2 + 3) * (4 - 1) = 15  
-        ((2 + 3) * 4) / 2 = 10  
-        ((1 + 2) * (3 - 1)) / (4 / 2) = 3  
-        ((2 * 3) + (4 / 2)) = 8  
-        ((2 + 3) * ((4 - 2) + 1)) = 15  
-        0 * 5 = 0
-        ((2)) = 2  
-        1 + (2 * (3 + (4 / 2))) = 11  
-        1 + 2 - 3 + 4 * 5 / 2 = 10  
-        3 * (4 + (5 - 2 * (6 / 3))) = 15
-        22 / (2 + 3 * (7 - 4)) = 2  
-        1 + (-2) * (3 + 4) - (-5) = -8
-        """;
     static ILRParserDFA MathLRDFAGen()
     {
         Func<ISyntaxElementValue[], decimal> Binary(Func<decimal, decimal, decimal> f)
@@ -92,47 +58,6 @@ static class MathTests
         ]);
         return dfa;
     }
-    public static void TestMath()
-    {
-        var dfa = MathLRDFAGen();
-        foreach (var testCase1 in TestCases.Split(NewLine))
-        {
-            if (testCase1.StartsWith("#")) continue;
-            var testCase = testCase1.Trim();
-            var a = testCase.Split(" = ");
-            var expr = a[0];
-            var ans = decimal.Parse(a[1]);
-            var input = MathLexer.GetTerminals(expr);
-            var output = LRParserRunner<decimal>.Parse(dfa, input);
-            if (output != ans)
-            {
-                Debugger.Break();
-            }
-        }
-    }
-    [DoesNotReturn]
-    public static void Interpreter()
-    {
-        var dfa = MathLRDFAGen();
-        Console.WriteLine("Mathematics Interpreter");
-        while (true)
-        {
-            Console.Write("> ");
-            var expr = Console.ReadLine();
-            if (string.IsNullOrWhiteSpace(expr)) continue;
-            try
-            {
-                var input = MathLexer.GetTerminals(expr);
-                var output = LRParserRunner<decimal>.Parse(dfa, input);
-                Console.WriteLine(output.ToString());
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Error {ex.GetType().FullName}: {ex.Message}");
-                Console.WriteLine(ex.StackTrace);
-            }
-        }
-    }
     class NonTerminal : INonTerminal
     {
         public static NonTerminal Expr { get; } = new("Expression");
@@ -156,19 +81,16 @@ static class MathTests
             return $"{target} -> {string.Join(" ", from x in rule select x.ToString())}";
         }
     }
-    class Terminal : ITerminal, ITerminalWithCustomPrecedence, ITerminalValue
+    class Terminal : ITerminal, ITerminalValue
     {
         public string Value { get; }
-
-        public ITerminal PrecedenceTerminal { get; }
 
         public ITerminal WithoutValue => this;
         ISyntaxElement ISyntaxElementValue.WithoutValue => this;
 
-        private Terminal(string term, Terminal? precedence = null)
+        private Terminal(string term)
         {
             Value = term;
-            PrecedenceTerminal = precedence ?? this;
         }
         readonly static Dictionary<string, Terminal> maps = [];
         public static Terminal Get(string term)
@@ -177,10 +99,6 @@ static class MathTests
             result = new Terminal(term);
             maps.Add(term, result);
             return result;
-        }
-        public static Terminal Get(string term, Terminal precedence)
-        {
-            return new(term, precedence);
         }
         public static implicit operator Terminal(string term) => Get(term);
         public override string ToString() => Value;
@@ -269,5 +187,79 @@ static class MathTests
 
     }
 
+    public static void TestMath()
+    {
+        var dfa = MathLRDFAGen();
+        foreach (var testCase1 in TestCases.Split(NewLine))
+        {
+            if (testCase1.StartsWith("#")) continue;
+            var testCase = testCase1.Trim();
+            var a = testCase.Split(" = ");
+            var expr = a[0];
+            var ans = decimal.Parse(a[1]);
+            var input = MathLexer.GetTerminals(expr);
+            var output = LRParserRunner<decimal>.Parse(dfa, input);
+            if (output != ans)
+            {
+                Debugger.Break();
+            }
+        }
+    }
+    [DoesNotReturn]
+    public static void Interpreter()
+    {
+        var dfa = MathLRDFAGen();
+        Console.WriteLine("Mathematics Interpreter");
+        while (true)
+        {
+            Console.Write("> ");
+            var expr = Console.ReadLine();
+            if (string.IsNullOrWhiteSpace(expr)) continue;
+            try
+            {
+                var input = MathLexer.GetTerminals(expr);
+                var output = LRParserRunner<decimal>.Parse(dfa, input);
+                Console.WriteLine(output.ToString());
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error {ex.GetType().FullName}: {ex.Message}");
+                Console.WriteLine(ex.StackTrace);
+            }
+        }
+    }
 
+    static string NewLine =
+        """
+        a
+        b
+        """[1..^1];
+    const string TestCases =
+        """
+        1 + 1 = 2  
+        2 - 1 = 1  
+        3 * 4 = 12  
+        8 / 2 = 4  
+        -3 = -3  
+        +4 = 4  
+        -(-5) = 5
+        -3 + 1 = -2
+        2 + 3 * 4 = 14  
+        2 * 3 + 4 = 10  
+        2 + 3 * 4 - 5 = 9  
+        (2 + 3) * 4 = 20  
+        2 * (3 + 4) = 14  
+        (2 + 3) * (4 - 1) = 15  
+        ((2 + 3) * 4) / 2 = 10  
+        ((1 + 2) * (3 - 1)) / (4 / 2) = 3  
+        ((2 * 3) + (4 / 2)) = 8  
+        ((2 + 3) * ((4 - 2) + 1)) = 15  
+        0 * 5 = 0
+        ((2)) = 2  
+        1 + (2 * (3 + (4 / 2))) = 11  
+        1 + 2 - 3 + 4 * 5 / 2 = 10  
+        3 * (4 + (5 - 2 * (6 / 3))) = 15
+        22 / (2 + 3 * (7 - 4)) = 2  
+        1 + (-2) * (3 + 4) - (-5) = -8
+        """;
 }
