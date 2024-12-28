@@ -5,9 +5,7 @@ A general lexer and LR(1) parser implementation in C#.
 ## Disclaimer
 
 Since this project is still in ALPHA state, bugs may
-(and is likely) occur. Please report the bugs via
-[Developer Sanctuary](https://dsc.gg/devsanx) Discord
-server `#gtudios` channel (prefered) or via the Issues tab.
+(and is likely) occur. Please report the bugs via the Issues tab.
 
 ## Lexer
 
