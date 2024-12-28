@@ -2,11 +2,6 @@
 
 A general lexer and LR(1) parser implementation in C#.
 
-See Get.Parser.Test and Get.Lexer.Test for some sample
-of manual implementation. In the future, the pattern may
-change since source generator will take care of some of
-the manual work.
-
 ## Disclaimer
 
 Since this project is still in ALPHA state, bugs may
