@@ -68,14 +68,12 @@ partial class RegexParser : ParserBase<RegexParser.Terminal, RegexParser.NonTerm
                 newStartState.AddTransition(c, newEndState);
         } else
         {
-            HashSet<char> charsInv = [];
+            // VERY SLOW!
             for (char c = char.MinValue; c <= char.MaxValue; c++)
             {
-                charsInv.Add(c);
+                if (!chars.Contains(c))
+                    newStartState.AddTransition(c, newEndState);
             }
-            charsInv.ExceptWith(chars);
-            foreach (var c in charsInv)
-                newStartState.AddTransition(c, newEndState);
         }
         return new(newStartState, newEndState);
     }
