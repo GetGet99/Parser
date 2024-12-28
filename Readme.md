@@ -20,9 +20,6 @@ See Get.Lexer.Test for example. The recommended approach
 is to use the source generator (see `CustomLexerSourceGen.cs`),
 although manual approach is also possible (see `CustomLexer.cs`).
 
-Known Issue: Some complex regexes are not correctly parsed.
-We are currently implementing a fix for that.
-
 ## LR(1) parser
 
 The LR(1) parser takes in the list of context free grammar
