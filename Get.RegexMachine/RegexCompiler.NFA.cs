@@ -29,184 +29,19 @@ partial class RegexCompiler<T> where T : class
 
     static (NFAState startState, NFAState endState) Generate(RegexVal<T> regex, int ruleId)
     {
-        var (startState, endState, _) = Generate(regex.Regex.GetEnumerator(), ruleId, regex.Order);
+        var (startState, endState) = Generate(regex.Regex, ruleId, regex.Order);
         endState.Value = regex.Value;
         return (startState, endState);
     }
-    static char GetChar(IEnumerator<char> regex)
+    static (NFAState startState, NFAState endState) Generate(string regex, int ruleId, int order)
     {
-        switch (regex.Current)
-        {
-            case '\\':
-                if (!regex.MoveNext()) throw new RegexCompilerException("'\\' expects another character");
-                return regex.Current switch
-                {
-                    'n' => '\n',
-                    'r' => '\r',
-                    't' => '\t',
-                    '^' or '\'' or '\"' or '.' or '[' or ']' or '(' or ')' or '\\' or '+' or '-' or '*' or '|' => regex.Current,
-                    _ => throw new RegexCompilerException($"'\\{regex.Current}' is not defined escaped character"),
-                };
-            default:
-                return regex.Current;
-        }
+        var parser = RegexParser.Instance;
+        parser.CreateEmptyNFAState = () => new NFAState(ruleId, order);
+        var nfastates = parser.Parse(regex);
+        return ((NFAState)nfastates.StartState, (NFAState)nfastates.EndState);
+    }
 
-    }
-    static (NFAState startState, NFAState endState, bool wasClosedBracketConsumed) Generate(IEnumerator<char> regex, int Rule, int order, bool expectsClosedBracket = false)
-    {
-        NFAState startState = new(Rule, order);
-        NFAState currentEndState = startState;
-        (NFAState startState, NFAState endState, bool shouldSkipMoveNext, bool terminate) MoveNextPostProcess((NFAState startState, NFAState endState) box)
-        {
-            bool terminate = !regex.MoveNext();
-            if (!terminate)
-                switch (regex.Current)
-                {
-                    case '*':
-                        {
-                            NFAState newStartState = new(Rule, order);
-                            newStartState.Epsilon.Add(box.startState);
-                            box.endState.Epsilon.Add(newStartState);
-                            box.startState = newStartState;
-                            box.endState = new(Rule, order);
-                            newStartState.Epsilon.Add(box.endState);
-                            return (box.startState, box.endState, false, false);
-                        }
-                    case '+':
-                        {
-                            NFAState newStartState = new(Rule, order);
-                            NFAState newEndState = new(Rule, order);
-                            newStartState.Epsilon.Add(box.startState);
-                            box.endState.Epsilon.Add(newEndState);
-                            newEndState.Epsilon.Add(newStartState);
-                            box.startState = newStartState;
-                            box.endState = newEndState;
-                            return (box.startState, box.endState, false, false);
-                        }
-                }
-            return (box.startState, box.endState, true, terminate);
-        }
-        if (regex.MoveNext())
-            while (true)
-            {
-                switch (regex.Current)
-                {
-                    case '(':
-                        {
-                            var child = Generate(regex, Rule, order, expectsClosedBracket: true);
-                            var (childStart, childEnd, skip, terminate) = MoveNextPostProcess((child.startState, child.endState));
-                            currentEndState.Epsilon.Add(childStart);
-                            currentEndState = childEnd;
-                            if (terminate) goto BreakWhile;
-                            if (skip) continue;
-                            break;
-                        }
-                    case ')':
-                        if (!expectsClosedBracket) throw new RegexCompilerException("Unexpected ')'");
-                        return (startState, currentEndState, true);
-                    case '|':
-                        {
-                            NFAState newStartState = new(Rule, order);
-                            var next = Generate(regex, order, Rule, expectsClosedBracket: expectsClosedBracket);
-                            newStartState.Epsilon.Add(startState);
-                            newStartState.Epsilon.Add(next.startState);
-                            currentEndState = new(Rule, order);
-                            startState.Epsilon.Add(currentEndState);
-                            next.startState.Epsilon.Add(currentEndState);
-                            startState = newStartState;
-                            if (next.wasClosedBracketConsumed)
-                                goto case ')';
-                        }
-                        break;
-                    case '[':
-                        {
-                            var next = GenerateClass(regex, Rule, order);
-                            var (nextStart, nextEnd, skip, terminate) = MoveNextPostProcess(next);
-                            currentEndState.Epsilon.Add(nextStart);
-                            // think below should not be here?
-                            // nextEnd.Epsilon.Add(currentEndState);
-                            currentEndState = nextEnd;
-                            if (terminate) goto BreakWhile;
-                            if (skip) continue;
-                        }
-                        break;
-                    default:
-                        {
-                            char c = GetChar(regex);
-                            NFAState newStartState = new(Rule, order);
-                            NFAState newEndState = new(Rule, order);
-                            newStartState[c].Add(newEndState);
-                            var (nextStart, nextEnd, skip, terminate) = MoveNextPostProcess((newStartState, newEndState));
-                            currentEndState.Epsilon.Add(nextStart);
-                            currentEndState = nextEnd;
-                            if (terminate) goto BreakWhile;
-                            if (skip) continue;
-                        }
-                        break;
-                }
-                if (!regex.MoveNext()) break;
-            }
-        BreakWhile:
-        if (expectsClosedBracket)
-            throw new RegexCompilerException("Expects ')'");
-        return (startState, currentEndState, false);
-    }
-    static (NFAState startState, NFAState endState) GenerateClass(IEnumerator<char> regex, int Rule, int order)
-    {
-        bool inversionMode = false;
-        NFAState startState = new(Rule, order);
-        NFAState endState = new(Rule, order);
-        void AddOrRemoveChar(char c)
-        {
-            if (inversionMode)
-            {
-                var hs = startState[c];
-                hs.Remove(endState);
-                if (hs.Count == 0)
-                    startState.RemoveTransition(c);
-            }
-            startState[c].Add(endState);
-        }
-        char? previous = null;
-        if (!regex.MoveNext())
-            throw new RegexCompilerException("Expects ']'");
-        if (regex.Current is '^')
-        {
-            inversionMode = true;
-            for (char c = char.MinValue; c < char.MaxValue; c++)
-                startState[c].Add(endState);
-            // move next to skip ^ symbol
-            if (!regex.MoveNext())
-                throw new RegexCompilerException("Expects ']'");
-        }
-        if (regex.Current is ']')
-            // skip the loop
-            return (startState, endState);
-        do
-        {
-            char current = GetChar(regex);
-            if (current == '-')
-            {
-                if (previous == null) throw new RegexCompilerException("Range: Expects a character before '-'");
-                if (!regex.MoveNext()) throw new RegexCompilerException("Range: Expects a character after '-'");
-                current = GetChar(regex);
-                if (current == '-') throw new RegexCompilerException("Range: unexpected '-'");
-                for (char c = previous.Value; c <= current; c++)
-                {
-                    AddOrRemoveChar(c);
-                }
-                previous = null;
-            }
-            else
-            {
-                previous = current;
-                AddOrRemoveChar(current);
-            }
-        } while (regex.MoveNext() && regex.Current != ']');
-
-        return (startState, endState);
-    }
-    class NFAState(int rule, int order)
+    public class NFAState(int rule, int order) : INFAState
     {
         public int Order { get; } = order;
         public int Rule { get; } = rule;
@@ -231,11 +66,27 @@ partial class RegexCompiler<T> where T : class
         public HashSet<NFAState> Epsilon { get => _epsilon ??= []; }
         public T? Value { get; set; }
         public bool IsAccepting => Value != null;
+
+        void INFAState.AddTransition(char c, Get.RegexMachine.INFAState next)
+        {
+            this[c].Add((NFAState)next);
+        }
+
         public override string ToString()
         {
             return $"({Value as object ?? "null"}) => {{{string.Join(", ", from key in (_epsilon != null ? Transitions.Keys.Append('ε') : Transitions.Keys) select $"'{key}'")}}}";
         }
+
+        void INFAState.AddEpsilonTransition(INFAState next)
+        {
+            Epsilon.Add((NFAState)next);
+        }
     }
+}
+public interface INFAState
+{
+    void AddEpsilonTransition(INFAState next);
+    void AddTransition(char c, INFAState next);
 }
 public record class RegexVal<T>([StringSyntax(StringSyntaxAttribute.Regex)] string Regex, T? Value, int Order = 0) where T : class;
 public class RegexCompilerException : Exception

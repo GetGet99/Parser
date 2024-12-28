@@ -10,6 +10,10 @@
 	</PropertyGroup>
 
 	<ItemGroup>
+	  <Compile Remove="RegexCompiler.NFA.old.cs" />
+	</ItemGroup>
+
+	<ItemGroup>
 		<ProjectReference Include="..\Get.PLShared\Get.PLShared.csproj" />
 		<PackageReference Include="PolySharp" Version="1.14.1" PrivateAssets="all" />
 		<ProjectReference Include="..\Get.Parser.SourceGenerator\Get.Parser.SourceGenerator.csproj" ReferenceOutputAssembly="False" OutputItemType="Analyzer" />

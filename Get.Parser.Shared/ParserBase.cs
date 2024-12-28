@@ -3,6 +3,9 @@
 public abstract class ParserBase<Terminal, NonTerminal, TOut>
     where Terminal : struct, Enum where NonTerminal : struct, Enum
 {
+    protected const Keywords AS = Keywords.As;
+    protected const Keywords WITHPARAM = Keywords.WithParam;
+    protected const Keywords WITHPRECDENCE = Keywords.WithPrecedence;
     public ParserBase()
     {
         ParserDFA = GenerateDFA();
@@ -41,7 +44,8 @@ public abstract class ParserBase<Terminal, NonTerminal, TOut>
     protected enum Keywords : byte
     {
         As,
-        WithParam
+        WithParam,
+        WithPrecedence
     }
     readonly record struct CFGRule(NonTerminal Target, IReadOnlyList<ISyntaxElement> Expressions, Func<ISyntaxElementValue[], INonTerminalValue> Implementation, Terminal? Precedence) : ICFGRuleWithPrecedence
     {

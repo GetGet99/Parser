@@ -234,10 +234,16 @@ partial class ParserGenerator : AttributeBaseGenerator<ParserAttribute, ParserGe
                     // TODO
                     if (option.ConstantParameterValue is null)
                         return "null";
-                    return option.ConstantParameterValue.ToString();
+                    
+                    return option.ConstantParameterValue switch
+                    {
+                        bool b => b ? "true" : "false",
+                        null => "null",
+                        var rest => rest.ToString()
+                    };
                 }
                 var nttype = NonTerminalTypes[value];
-                var (eles, opts, red) = rule;
+                var (eles, constParams, red, ruleprec) = rule;
 
                 StringBuilder reduceArgs = new();
                 foreach (var (idx, ele) in eles.WithIndex())
@@ -268,7 +274,7 @@ partial class ParserGenerator : AttributeBaseGenerator<ParserAttribute, ParserGe
                         );
                     }
                 }
-                foreach (var opt in opts)
+                foreach (var opt in constParams)
                 {
                     reduceArgs.AppendLine(
                         $"""
@@ -277,7 +283,8 @@ partial class ParserGenerator : AttributeBaseGenerator<ParserAttribute, ParserGe
                     );
                 }
                 var len = EasyCSharp.GeneratorTools.Extension.InSourceNewLine.Length + 1 /* comma */;
-                reduceArgs.Remove(reduceArgs.Length - len, len);
+                if (reduceArgs.Length > len) // otherwise basically there are 0 arguments
+                    reduceArgs.Remove(reduceArgs.Length - len, len);
 
                 string reduceMethodCall = red switch
                 {
@@ -320,7 +327,8 @@ partial class ParserGenerator : AttributeBaseGenerator<ParserAttribute, ParserGe
                                     );
                                     """
                             ).IndentWOF(2)}}
-                        }
+                        },
+                        Precedence: {{(ruleprec is null ? "null" : $"({terminalFT}){ruleprec}")}}
                     ),
                     """);
             }
@@ -336,7 +344,7 @@ partial class ParserGenerator : AttributeBaseGenerator<ParserAttribute, ParserGe
                         from term in precedence.RawEnumTerminals
                         select $"Syntax(({terminalFT}){term})").IndentWOF(1)
                     }
-                ], Associativity.{precedence.Associativity}),
+                ], {FullType.Of<Associativity>()}.{precedence.Associativity}),
                 """
             );
         }

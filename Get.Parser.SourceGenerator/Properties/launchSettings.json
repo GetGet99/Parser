@@ -3,6 +3,10 @@
     "Source Gen: Get.Parser.Test": {
       "commandName": "DebugRoslynComponent",
       "targetProject": "..\\Get.Parser.Test\\Get.Parser.Test.csproj"
+    },
+    "Source Gen: Get.RegexMachine": {
+      "commandName": "DebugRoslynComponent",
+      "targetProject": "..\\Get.RegexMachine\\Get.RegexMachine.csproj"
     }
   }
 }
