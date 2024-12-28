@@ -10,9 +10,10 @@ the manual work.
 
 ## Disclaimer
 
-Since this project is still in ALPHA state, bugs may occur.
-Please report the bugs via [Developer Sanctuary](https://dsc.gg/devsanx)
-Discord server `#gtudios` channel (prefered) or via the Issues tab.
+Since this project is still in ALPHA state, bugs may
+(and is likely) occur. Please report the bugs via
+[Developer Sanctuary](https://dsc.gg/devsanx) Discord
+server `#gtudios` channel (prefered) or via the Issues tab.
 
 ## Lexer
 
