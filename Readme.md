@@ -1,7 +1,6 @@
 # Get's Parser and Lexer (ALPHA)
 
 A general lexer and LR(1) parser implementation in C#.
-It has not been tested througly yet.
 
 See Get.Parser.Test and Get.Lexer.Test for some sample
 of manual implementation. In the future, the pattern may
