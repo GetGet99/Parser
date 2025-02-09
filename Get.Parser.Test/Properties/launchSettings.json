@@ -1,0 +1,11 @@
+{
+  "profiles": {
+    "WSL": {
+      "commandName": "WSL2",
+      "distributionName": ""
+    },
+    "Get.Parser.Test": {
+      "commandName": "Project"
+    }
+  }
+}
