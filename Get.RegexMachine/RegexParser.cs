@@ -22,11 +22,16 @@ partial class RegexParser : ParserBase<RegexParser.Terminal, RegexParser.NonTerm
     RegexNFAs Alt(RegexNFAs a, RegexNFAs b)
     {
         var newStartState = CreateEmptyNFAState();
+        var newEndState = CreateEmptyNFAState();
+
+        // Transition from new start state to the start states of 'a' and 'b'
         newStartState.AddEpsilonTransition(a.StartState);
         newStartState.AddEpsilonTransition(b.StartState);
-        var newEndState = CreateEmptyNFAState();
-        a.StartState.AddEpsilonTransition(newEndState);
-        b.StartState.AddEpsilonTransition(newEndState);
+
+        // Transition from end states of 'a' and 'b' to the new end state
+        a.EndState.AddEpsilonTransition(newEndState);
+        b.EndState.AddEpsilonTransition(newEndState);
+
         return new(newStartState, newEndState);
     }
     RegexNFAs Alt(RegexNFAs a) => Alt(a, EmptyString());
@@ -37,26 +42,31 @@ partial class RegexParser : ParserBase<RegexParser.Terminal, RegexParser.NonTerm
     }
     RegexNFAs StarHandler(RegexNFAs a)
     {
-        INFAState newStartState = CreateEmptyNFAState();
+        var newStartState = CreateEmptyNFAState();
+        var newEndState = CreateEmptyNFAState();
+
+        // Add transitions
         newStartState.AddEpsilonTransition(a.StartState);
-        a.StartState.AddEpsilonTransition(newStartState);
-        a.StartState = newStartState;
-        a.EndState = CreateEmptyNFAState();
-        newStartState.AddEpsilonTransition(a.EndState);
-        return a;
+        newStartState.AddEpsilonTransition(newEndState); // Empty loop (epsilon)
+
+        a.EndState.AddEpsilonTransition(a.StartState); // Loop back to start of 'a'
+        a.EndState.AddEpsilonTransition(newEndState); // Exit to new end state
+
+        return new(newStartState, newEndState);
     }
     RegexNFAs PlusHandler(RegexNFAs a)
     {
+        var newStartState = CreateEmptyNFAState();
+        var newEndState = CreateEmptyNFAState();
 
-        INFAState newStartState = CreateEmptyNFAState();
-        INFAState newEndState = CreateEmptyNFAState();
-        newStartState.AddEpsilonTransition(a.StartState);
-        a.EndState.AddEpsilonTransition(newEndState);
-        newEndState.AddEpsilonTransition(newStartState);
-        a.StartState = newStartState;
-        a.EndState = newEndState;
-        return a;
+        // Add transitions
+        newStartState.AddEpsilonTransition(a.StartState); // Begin with 'a'
+        a.EndState.AddEpsilonTransition(newEndState); // Exit to new end state
+        a.EndState.AddEpsilonTransition(a.StartState); // Loop back to start of 'a'
+
+        return new(newStartState, newEndState);
     }
+
     RegexNFAs ClassHandler(HashSet<char> chars, bool inverse)
     {
 
@@ -66,10 +76,10 @@ partial class RegexParser : ParserBase<RegexParser.Terminal, RegexParser.NonTerm
         {
             foreach (var c in chars)
                 newStartState.AddTransition(c, newEndState);
-        } else
+        }
+        else
         {
-            // VERY SLOW!
-            for (char c = char.MinValue; c <= char.MaxValue; c++)
+            for (char c = char.MinValue; c <= 127; c++)
             {
                 if (!chars.Contains(c))
                     newStartState.AddTransition(c, newEndState);
@@ -134,6 +144,8 @@ partial class RegexParser : ParserBase<RegexParser.Terminal, RegexParser.NonTerm
         [Type<char>]
         Dot,
         [Type<char>]
+        DollarSign,
+        [Type<char>]
         Dash,
         [Type<char>]
         NormalCharOrSpecialEscape,
@@ -194,6 +206,7 @@ partial class RegexParser : ParserBase<RegexParser.Terminal, RegexParser.NonTerm
         [Rule(Backslash, SingleQuote, AS, "val", nameof(Identity))]
         [Rule(Backslash, DoubleQuote, AS, "val", nameof(Identity))]
         [Rule(Backslash, Dot, AS, "val", nameof(Identity))]
+        [Rule(Backslash, DollarSign, AS, "val", nameof(Identity))]
         [Rule(Backslash, Dash, AS, "val", nameof(Identity))]
         Character,
         [Type<IEnumerable<char>>]
@@ -227,6 +240,7 @@ partial class RegexParser : ParserBase<RegexParser.Terminal, RegexParser.NonTerm
                 '\'' => SingleQuote,
                 '\"' => DoubleQuote,
                 '.' => Dot,
+                '$' => DollarSign,
                 '-' => Dash,
                 'n' or 'r' or 't' => NormalCharOrSpecialEscape,
                 _ => Other

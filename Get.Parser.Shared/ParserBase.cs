@@ -5,6 +5,7 @@ public abstract class ParserBase<Terminal, NonTerminal, TOut>
 {
     protected const Keywords AS = Keywords.As;
     protected const Keywords WITHPARAM = Keywords.WithParam;
+    protected const Keywords FUNCCALL = Keywords.FuncCall;
     protected const Keywords WITHPRECDENCE = Keywords.WithPrecedence;
     public ParserBase()
     {
@@ -45,7 +46,8 @@ public abstract class ParserBase<Terminal, NonTerminal, TOut>
     {
         As,
         WithParam,
-        WithPrecedence
+        WithPrecedence,
+        FuncCall
     }
     readonly record struct CFGRule(NonTerminal Target, IReadOnlyList<ISyntaxElement> Expressions, Func<ISyntaxElementValue[], INonTerminalValue> Implementation, Terminal? Precedence) : ICFGRuleWithPrecedence
     {

@@ -3,5 +3,5 @@
 //MathTests.TestMath();
 //MathTests.Interpreter();
 //TestManualRuleAttr.Test();
-//TestRegex.Test();
-TestSourceGenMath.Test();
+TestRegex.Test();
+//TestSourceGenMath.Test();

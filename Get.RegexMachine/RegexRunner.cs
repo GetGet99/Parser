@@ -22,6 +22,9 @@ public static class RegexRunner<T> where T : class
                     backtrackPosition = enumerator.CurrentPosition;
                 }
                 currentDFAState = nextState;
+            } else
+            {
+                break;
             }
         }
         if (lastSuccessfulState != null)

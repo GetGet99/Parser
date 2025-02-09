@@ -6,7 +6,7 @@
     },
     "Source Gen - QuickCode": {
       "commandName": "DebugRoslynComponent",
-      "targetProject": "..\\QuickCode\\QuickCode.csproj"
+      "targetProject": "..\\QuickCode\\QuickCode.Parser.csproj"
     }
   }
 }

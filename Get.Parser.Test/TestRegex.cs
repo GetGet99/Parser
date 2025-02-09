@@ -224,8 +224,8 @@ static partial class TestRegex
             var expr = LRParserRunner<FinalRegex>.Parse(dfa, Tokens("""
                 "([^\r\n\"\\]|(\\(n|t|r|\'|\")))*"
                 """
-                // should've used class instead of several alternations for second one but I wasn't smart
-                // i guess it's a good test case
+            // should've used class instead of several alternations for second one but I wasn't smart
+            // i guess it's a good test case
             )).Expression;
             if (expr.AssertIs<CatExpr>(out var cat))
             {
@@ -340,6 +340,47 @@ static partial class TestRegex
                     Debug.Assert(cat.Expressions.Length is 0);
                 if (alt.Expressions[1].AssertIs<CatExpr>(out var cat1))
                     AssertSequenceEqual(cat1.Expressions, "abcdefg");
+            }
+        }
+        {
+            var expr = LRParserRunner<FinalRegex>.Parse(dfa, Tokens(@"/\*[^*]*\*+([^/*][^*]*\*+)\*/")).Expression;
+            if (expr.AssertIs<CatExpr>(out var cat1))
+            {
+                Debug.Assert(cat1.Expressions.Length is 6);
+                AssertSequenceEqual(cat1.Expressions[..2], "/*");
+                if (cat1.Expressions[2].AssertIs<StarExpr>(out var star1))
+                {
+                    if (star1.Expression.AssertIs<ClassExpr>(out var class1))
+                    {
+                        Debug.Assert(class1.IsInverse);
+                        AssertEqualsAnyOrder(class1.Chars, "*");
+                    }
+                }
+                if (cat1.Expressions[3].AssertIs<CatExpr>(out var cat2))
+                {
+                    Debug.Assert(cat2.Expressions.Length is 3);
+                    if (cat2.Expressions[0].AssertIs<ClassExpr>(out var class2))
+                    {
+                        Debug.Assert(class2.IsInverse);
+                        AssertEqualsAnyOrder(class2.Chars, "/*");
+                    }
+                    if (cat2.Expressions[1].AssertIs<StarExpr>(out var star2))
+                    {
+                        if (star2.Expression.AssertIs<ClassExpr>(out var class3))
+                        {
+                            Debug.Assert(class3.IsInverse);
+                            AssertEqualsAnyOrder(class3.Chars, "*");
+                        }
+                    }
+                    if (cat2.Expressions[2].AssertIs<PlusExpr>(out var plus1))
+                    {
+                        if (plus1.Expression.AssertIs<CharExpr>(out var char1))
+                        {
+                            Debug.Assert(char1.Char == '*');
+                        }
+                    }
+                }
+                AssertSequenceEqual(cat1.Expressions[^2..], "*/");
             }
         }
     }

@@ -130,6 +130,30 @@ partial class RegexCompiler<T>
     public class DFAState(int id, T? value)
     {
         public Dictionary<char, DFAState> Transitions { get; } = [];
+        public DFAState? this[char c]
+        {
+            get
+            {
+                if (Transitions.TryGetValue(c, out var val))
+                    return val;
+                return null;
+            }
+        }
+        public DFAState? this[string c]
+        {
+            get
+            {
+                if (c.Length is 0)
+                    return null;
+                var next = this[c[0]];
+                if (next is null)
+                    return null;
+                if (c.Length == 1)
+                    return next;
+                else
+                    return next[c[1..]];
+            }
+        }
         public int Id { get; } = id;
         public T? Value { get; internal set; } = value;
         public bool IsAccepting => Value != null;

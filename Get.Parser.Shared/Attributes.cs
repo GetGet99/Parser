@@ -43,7 +43,7 @@ namespace Get.Parser;
 /// See <see cref="RuleAttribute"/> for detailed examples and type definitions.
 /// </param>
 [AttributeUsage(AttributeTargets.Field, AllowMultiple = true)]
-public class RuleAttribute(params object[] ReduceRuleDefinition) : Attribute;
+public class RuleAttribute(params object?[] ReduceRuleDefinition) : Attribute;
 [AttributeUsage(AttributeTargets.Field, AllowMultiple = false)]
 public class TypeAttribute<T> : Attribute;
 [AttributeUsage(AttributeTargets.Class, AllowMultiple = false)]
@@ -57,7 +57,7 @@ public class ParserAttribute(object startNode) : Attribute
     /// Parser's <see cref="TypeAttribute{T}"/>. This is useful if you have used an external lexer and would like this
     /// parser to be compatible without Get.Lexer dependency.
     /// </summary>
-    public bool UseGetLexerTypeInformation { get; } = false;
+    public bool UseGetLexerTypeInformation { get; set; } = false;
 }
 /// <summary>
 /// Specifies a precedence for a parser.<br/>
