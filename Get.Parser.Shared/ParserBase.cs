@@ -3,10 +3,16 @@
 public abstract class ParserBase<Terminal, NonTerminal, TOut>
     where Terminal : struct, Enum where NonTerminal : struct, Enum
 {
-    protected const Keywords AS = Keywords.As;
-    protected const Keywords WITHPARAM = Keywords.WithParam;
-    protected const Keywords FUNCCALL = Keywords.FuncCall;
-    protected const Keywords WITHPRECDENCE = Keywords.WithPrecedence;
+    protected const ParserSourceGeneratorKeywords AS = ParserSourceGeneratorKeywords.As;
+    protected const ParserSourceGeneratorKeywords WITHPARAM = ParserSourceGeneratorKeywords.WithParam;
+    protected const ParserSourceGeneratorKeywords FUNCCALL = ParserSourceGeneratorKeywords.FuncCall;
+    protected const ParserSourceGeneratorKeywords WITHPRECDENCE = ParserSourceGeneratorKeywords.WithPrecedence;
+    protected const ParserSourceGeneratorKeywords EMPTYLIST = ParserSourceGeneratorKeywords.EmptyList;
+    protected const ParserSourceGeneratorKeywords SINGLELIST = ParserSourceGeneratorKeywords.SingleList;
+    protected const ParserSourceGeneratorKeywords APPENDLIST = ParserSourceGeneratorKeywords.AppendList;
+    protected const ParserSourceGeneratorKeywords IDENTITY = ParserSourceGeneratorKeywords.Identity;
+    protected const ParserSourceGeneratorKeywords LIST = ParserSourceGeneratorKeywords.List;
+    protected const ParserSourceGeneratorKeywords VALUE = ParserSourceGeneratorKeywords.Value;
     public ParserBase()
     {
         ParserDFA = GenerateDFA();
@@ -42,13 +48,6 @@ public abstract class ParserBase<Terminal, NonTerminal, TOut>
     }
     protected static ICFGRuleWithPrecedence CreateRule(NonTerminal Target, IReadOnlyList<ISyntaxElement> Expressions, Func<ISyntaxElementValue[], INonTerminalValue> Implementation, Terminal? Precedence = null)
         => new CFGRule(Target, Expressions, Implementation, Precedence);
-    protected enum Keywords : byte
-    {
-        As,
-        WithParam,
-        WithPrecedence,
-        FuncCall
-    }
     readonly record struct CFGRule(NonTerminal Target, IReadOnlyList<ISyntaxElement> Expressions, Func<ISyntaxElementValue[], INonTerminalValue> Implementation, Terminal? Precedence) : ICFGRuleWithPrecedence
     {
         ITerminal? ICFGRuleWithPrecedence.PrecedenceTerminal => Precedence.HasValue ? Syntax(Precedence.Value) : null;

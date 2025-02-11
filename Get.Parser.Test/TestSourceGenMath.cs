@@ -14,8 +14,8 @@ using System.Text;
 )]
 partial class TestSourceGenMath : ParserBase<TestSourceGenMath.Terminal, TestSourceGenMath.NonTerminal, decimal>
 {
-    const Keywords AS = Keywords.As;
-    const Keywords WITHPARAM = Keywords.WithParam;
+    const ParserSourceGeneratorKeywords AS = ParserSourceGeneratorKeywords.As;
+    const ParserSourceGeneratorKeywords WITHPARAM = ParserSourceGeneratorKeywords.WithParam;
     public enum Terminal
     {
         Plus,

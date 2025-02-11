@@ -7,12 +7,14 @@ class RuleAttrSyntaxParser : ParserBase<RuleAttrSyntaxParser.Terminal, RuleAttrS
 {
     public enum Terminal
     {
-        As, WithParam, WithPrecedence, String, Terminal, NonTerminal, Type, Unknown
+        As, WithParam, WithPrecedence, String, Terminal, NonTerminal, Type, Unknown,
+        ParserFuncArg, ParserFunc
     }
     public enum NonTerminal
     {
-        Rule, Element, Raw, ConstParam, ReduceAction,
-        ElementList, ConstParamList, Constant
+        Rule, Element, Raw, ConstArg, ReduceAction,
+        ElementList, ConstArgsList, Constant,
+        FuncArg
     }
     protected override ILRParserDFA GenerateDFA()
     {
@@ -20,7 +22,7 @@ class RuleAttrSyntaxParser : ParserBase<RuleAttrSyntaxParser.Terminal, RuleAttrS
         ICFGRule[] rules = [
             CreateRule(NonTerminal.Rule, [
                 Syntax(NonTerminal.ElementList),
-                Syntax(NonTerminal.ConstParamList),
+                Syntax(NonTerminal.ConstArgsList),
                 Syntax(NonTerminal.ReduceAction)
             ], x => CreateValue(NonTerminal.Rule, new Rule(
                 GetValue<List<Element>>(x[0]),
@@ -29,7 +31,7 @@ class RuleAttrSyntaxParser : ParserBase<RuleAttrSyntaxParser.Terminal, RuleAttrS
             ))),
             CreateRule(NonTerminal.Rule, [
                 Syntax(NonTerminal.ElementList),
-                Syntax(NonTerminal.ConstParamList),
+                Syntax(NonTerminal.ConstArgsList),
                 Syntax(NonTerminal.ReduceAction),
                 Syntax(Terminal.WithPrecedence),
                 Syntax(Terminal.Terminal),
@@ -48,9 +50,9 @@ class RuleAttrSyntaxParser : ParserBase<RuleAttrSyntaxParser.Terminal, RuleAttrS
             CreateRule(NonTerminal.Element, [
                 Syntax(NonTerminal.Raw),
                 Syntax(Terminal.As),
-                Syntax(Terminal.String)
+                Syntax(NonTerminal.FuncArg)
             ], x => CreateValue(NonTerminal.Element, new Element(
-                GetValue<Raw>(x[0]), GetValue<string>(x[2])
+                GetValue<Raw>(x[0]), GetValue<Argument>(x[2])
             ))),
             CreateRule(NonTerminal.Raw, [
                 Syntax(Terminal.Terminal)
@@ -62,13 +64,19 @@ class RuleAttrSyntaxParser : ParserBase<RuleAttrSyntaxParser.Terminal, RuleAttrS
             ], x => CreateValue(NonTerminal.Raw, new Raw(
                 GetValue<object>(x[0]), IsTerminal: false
             ))),
-            CreateRule(NonTerminal.ConstParam, [
+            CreateRule(NonTerminal.ConstArg, [
                 Syntax(Terminal.WithParam),
-                Syntax(Terminal.String),
+                Syntax(NonTerminal.FuncArg),
                 Syntax(NonTerminal.Constant)
-            ], x => CreateValue(NonTerminal.ConstParam, new Option(
-                GetValue<string>(x[1]), GetValue<object?>(x[2])
+            ], x => CreateValue(NonTerminal.ConstArg, new Option(
+                GetValue<Argument>(x[1]), GetValue<object?>(x[2])
             ))),
+            CreateRule(NonTerminal.FuncArg, [
+                Syntax(Terminal.String)
+            ], x => CreateValue<Argument>(NonTerminal.FuncArg, new StringArgument(GetValue<string>(x[0])))),
+            CreateRule(NonTerminal.FuncArg, [
+                Syntax(Terminal.ParserFuncArg)
+            ], x => CreateValue<Argument>(NonTerminal.FuncArg, new ParserFuncsArgument(GetValue<ParserFuncArgs>(x[0])))),
             CreateRule(NonTerminal.ReduceAction, [
                 Syntax(Terminal.String)
             ], x => CreateValue<ReduceAction>(NonTerminal.ReduceAction, new ReduceMethod(
@@ -79,6 +87,11 @@ class RuleAttrSyntaxParser : ParserBase<RuleAttrSyntaxParser.Terminal, RuleAttrS
             ], x => CreateValue<ReduceAction>(NonTerminal.ReduceAction, new ReduceConstructor(
                 GetValue<ITypeSymbol>(x[0])
             ))),
+            CreateRule(NonTerminal.ReduceAction, [
+                Syntax(Terminal.ParserFunc)
+            ], x => CreateValue<ReduceAction>(NonTerminal.ReduceAction, new ReduceParserFunc(
+                GetValue<ParserFuncs>(x[0])
+            ))),
             CreateRule(NonTerminal.ElementList, [
 
             ], CreateEmptyListHandler<Element>(NonTerminal.ElementList)),
@@ -86,13 +99,13 @@ class RuleAttrSyntaxParser : ParserBase<RuleAttrSyntaxParser.Terminal, RuleAttrS
                 Syntax(NonTerminal.ElementList),
                 Syntax(NonTerminal.Element)
             ], CreateAppendListHandler<Element>(NonTerminal.ElementList, listIdx: 0, eleIdx: 1)),
-            CreateRule(NonTerminal.ConstParamList, [
+            CreateRule(NonTerminal.ConstArgsList, [
 
-            ], CreateEmptyListHandler<Option>(NonTerminal.ConstParamList)),
-            CreateRule(NonTerminal.ConstParamList, [
-                Syntax(NonTerminal.ConstParamList),
-                Syntax(NonTerminal.ConstParam)
-            ], CreateAppendListHandler<Option>(NonTerminal.ConstParamList, listIdx: 0, eleIdx: 1)),
+            ], CreateEmptyListHandler<Option>(NonTerminal.ConstArgsList)),
+            CreateRule(NonTerminal.ConstArgsList, [
+                Syntax(NonTerminal.ConstArgsList),
+                Syntax(NonTerminal.ConstArg)
+            ], CreateAppendListHandler<Option>(NonTerminal.ConstArgsList, listIdx: 0, eleIdx: 1)),
             // any kinds of terminal can be a constant
             ..
             from term in Enum.GetValues(typeof(Terminal)).Cast<Terminal>()
@@ -136,14 +149,32 @@ class RuleAttrSyntaxParser : ParserBase<RuleAttrSyntaxParser.Terminal, RuleAttrS
                             yield return CreateValue(Terminal.NonTerminal, parameter.Value ?? throw new NullReferenceException());
                         else if (parameter.Type!.Equals(keywordType, SymbolEqualityComparer.Default))
                             switch ((byte)(parameter.Value ?? throw new NullReferenceException())) {
-                                case (byte)Keywords.As:
+                                case (byte)ParserSourceGeneratorKeywords.As:
                                     yield return CreateValue(Terminal.As);
                                     continue;
-                                case (byte)Keywords.WithParam:
+                                case (byte)ParserSourceGeneratorKeywords.WithParam:
                                     yield return CreateValue(Terminal.WithParam);
                                     continue;
-                                case (byte)Keywords.WithPrecedence:
+                                case (byte)ParserSourceGeneratorKeywords.WithPrecedence:
                                     yield return CreateValue(Terminal.WithPrecedence);
+                                    continue;
+                                case (byte)ParserSourceGeneratorKeywords.Identity:
+                                    yield return CreateValue(Terminal.ParserFunc, ParserFuncs.Identity);
+                                    continue;
+                                case (byte)ParserSourceGeneratorKeywords.EmptyList:
+                                    yield return CreateValue(Terminal.ParserFunc, ParserFuncs.EmptyList);
+                                    continue;
+                                case (byte)ParserSourceGeneratorKeywords.SingleList:
+                                    yield return CreateValue(Terminal.ParserFunc, ParserFuncs.SingleList);
+                                    continue;
+                                case (byte)ParserSourceGeneratorKeywords.AppendList:
+                                    yield return CreateValue(Terminal.ParserFunc, ParserFuncs.AppendList);
+                                    continue;
+                                case (byte)ParserSourceGeneratorKeywords.List:
+                                    yield return CreateValue(Terminal.ParserFuncArg, ParserFuncArgs.List);
+                                    continue;
+                                case (byte)ParserSourceGeneratorKeywords.Value:
+                                    yield return CreateValue(Terminal.ParserFuncArg, ParserFuncArgs.Value);
                                     continue;
                                 default:
                                     yield return CreateValue<object?>(Terminal.Unknown, parameter.Value);
@@ -175,15 +206,18 @@ class RuleAttrSyntaxParser : ParserBase<RuleAttrSyntaxParser.Terminal, RuleAttrS
 }
 
 public record Rule(List<Element> Elements, List<Option> Options, ReduceAction ReduceAction, object? PrecedenceTerminal = null);
-public record Element(Raw Raw, string? AsParameter)
+public record Element(Raw Raw, Argument? AsArg)
 {
     public override string ToString()
     {
-        if (AsParameter is null)
+        if (AsArg is null)
             return Raw.ToString();
-        return $"{Raw} AS {AsParameter}";
+        return $"{Raw} AS {AsArg}";
     }
 }
+public abstract record Argument;
+public record StringArgument(string ArgName) : Argument;
+public record ParserFuncsArgument(ParserFuncArgs ArgName) : Argument;
 public record Raw(object RawEnum, bool IsTerminal)
 {
     public override string ToString()
@@ -191,11 +225,11 @@ public record Raw(object RawEnum, bool IsTerminal)
         return $"{(IsTerminal ? "Terminal" : "NonTerminal")}.{RawEnum}";
     }
 }
-public record Option(string ParameterName, object? ConstantParameterValue)
+public record Option(Argument ArgumentName, object? ConstantParameterValue)
 {
     public override string ToString()
     {
-        return $"{ParameterName}: {ConstantParameterValue}";
+        return $"{ArgumentName}: {ConstantParameterValue}";
     }
 }
 public abstract record ReduceAction;
@@ -212,4 +246,23 @@ public record ReduceConstructor(ITypeSymbol Type_) : ReduceAction
     {
         return $"ReduceBy: constructor call {Type_}(...)";
     }
+}
+public record ReduceParserFunc(ParserFuncs ParserFunc) : ReduceAction
+{
+    public override string ToString()
+    {
+        return $"ReduceBy: parser func {ParserFunc}(...)";
+    }
+}
+public enum ParserFuncs
+{
+    Identity,
+    EmptyList,
+    SingleList,
+    AppendList
+}
+public enum ParserFuncArgs
+{
+    List,
+    Value
 }

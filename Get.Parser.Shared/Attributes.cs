@@ -78,3 +78,14 @@ public class PrecedenceAttribute(params object[] parameters) : Attribute
 {
 
 }
+/// <summary>
+/// On Parser class, specifies the type of list to be created.
+/// </summary>
+/// <param name="type">The type of the list, must have 1 generic parameter and a parameterless constructor, and is written in <c>TypeOfList&lt;&gt;</c></param>
+[AttributeUsage(AttributeTargets.Class, AllowMultiple = false)]
+class ParserListTypeAttribute(Type type) : Attribute;
+/// <summary>
+/// Shorthand to specify Type inside the list specified in <see cref="ParserListTypeAttribute"/>
+/// </summary>
+[AttributeUsage(AttributeTargets.Field, AllowMultiple = false)]
+class ListTypeAttribute<T> : TypeAttribute<T>;
