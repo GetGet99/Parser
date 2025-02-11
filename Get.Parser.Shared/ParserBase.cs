@@ -7,11 +7,42 @@ public abstract class ParserBase<Terminal, NonTerminal, TOut>
     protected const ParserSourceGeneratorKeywords WITHPARAM = ParserSourceGeneratorKeywords.WithParam;
     protected const ParserSourceGeneratorKeywords FUNCCALL = ParserSourceGeneratorKeywords.FuncCall;
     protected const ParserSourceGeneratorKeywords WITHPRECDENCE = ParserSourceGeneratorKeywords.WithPrecedence;
+    /// <summary>
+    /// <code>
+    /// func EMPTYLIST:
+    ///     return []
+    /// </code>
+    /// </summary>
     protected const ParserSourceGeneratorKeywords EMPTYLIST = ParserSourceGeneratorKeywords.EmptyList;
+    /// <summary>
+    /// <code>
+    /// func SINGLELIST(VALUE):
+    ///     return [VALUE]
+    /// </code>
+    /// </summary>
     protected const ParserSourceGeneratorKeywords SINGLELIST = ParserSourceGeneratorKeywords.SingleList;
+    /// <summary>
+    /// <code>
+    /// func APPENDLIST(LIST, VALUE):
+    ///     LIST.Add(VALUE)
+    ///     return LIST
+    /// </code>
+    /// </summary>
     protected const ParserSourceGeneratorKeywords APPENDLIST = ParserSourceGeneratorKeywords.AppendList;
+    /// <summary>
+    /// <code>
+    /// func IDENTITY(VALUE):
+    ///     return VALUE
+    /// </code>
+    /// </summary>
     protected const ParserSourceGeneratorKeywords IDENTITY = ParserSourceGeneratorKeywords.Identity;
+    /// <summary>
+    /// Parameter to APPENDLIST
+    /// </summary>
     protected const ParserSourceGeneratorKeywords LIST = ParserSourceGeneratorKeywords.List;
+    /// <summary>
+    /// Parameter to IDENTITY, SINGLELIST, APPENDLIST
+    /// </summary>
     protected const ParserSourceGeneratorKeywords VALUE = ParserSourceGeneratorKeywords.Value;
     public ParserBase()
     {

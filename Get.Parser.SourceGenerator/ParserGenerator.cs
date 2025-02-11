@@ -519,7 +519,7 @@ partial class ParserGenerator : AttributeBaseGenerator<ParserAttribute, ParserGe
                                     """;
                             else if (reduceParserFunc.ParserFunc is ParserFuncs.SingleList)
                                 creation = $"""
-                                    CreateValue<{new FullType(nttype)}>(
+                                    return CreateValue<{new FullType(nttype)}>(
                                         ({nonTerminalFT}){value},
                                         [({val})]
                                     );
@@ -576,7 +576,7 @@ partial class ParserGenerator : AttributeBaseGenerator<ParserAttribute, ParserGe
                                 }
                             }
                             creation = $"""
-                                CreateValue<{new FullType(nttype)}>(
+                                return CreateValue<{new FullType(nttype)}>(
                                     ({nonTerminalFT}){value},
                                     []
                                 );
@@ -724,7 +724,7 @@ partial class ParserGenerator : AttributeBaseGenerator<ParserAttribute, ParserGe
                                 {listName}.Add({val});
                                 return CreateValue<{new FullType(nttype)}>(
                                     ({nonTerminalFT}){value},
-                                    listName
+                                    {listName}
                                 );
                                 """;
                             break;
