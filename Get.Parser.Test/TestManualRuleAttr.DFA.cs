@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Get.PLShared;
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
@@ -203,10 +204,14 @@ static partial class TestManualRuleAttr
     }
     record NonTerminalValue(NonTerminal Type) : INonTerminalValue
     {
+        public Position Start { get; set; }
+        public Position End { get; set; }
         ISyntaxElement ISyntaxElementValue.WithoutValue => new NonTerminalWrapper(Type);
     }
     record TerminalValue(object RawObject, Terminal Type) : ITerminalValue
     {
+        public Position Start { get; set; }
+        public Position End { get; set; }
         ISyntaxElement ISyntaxElementValue.WithoutValue => new TerminalWrapper(Type);
         ITerminal ITerminalValue.WithoutValue => new TerminalWrapper(Type);
         public override string ToString()

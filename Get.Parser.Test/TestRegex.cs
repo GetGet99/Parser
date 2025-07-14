@@ -1,4 +1,5 @@
-﻿using System.Diagnostics;
+﻿using Get.PLShared;
+using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 namespace Get.Parser.Test;
 static partial class TestRegex
@@ -438,6 +439,8 @@ static partial class TestRegex
     }
     record TerminalValue(char RawChar, Terminal Type) : ITerminalValue<char>
     {
+        public Position Start { get; set; }
+        public Position End { get; set; }
         ISyntaxElement ISyntaxElementValue.WithoutValue => new TerminalWrapper(Type);
         ITerminal ITerminalValue.WithoutValue => new TerminalWrapper(Type);
 

@@ -4,6 +4,6 @@
     <DebuggerFlavor>ProjectDebugger</DebuggerFlavor>
   </PropertyGroup>
   <PropertyGroup>
-    <ActiveDebugProfile>Source Gen: Get.RegexMachine</ActiveDebugProfile>
+    <ActiveDebugProfile>Source Gen: Get.Parser.Test</ActiveDebugProfile>
   </PropertyGroup>
 </Project>

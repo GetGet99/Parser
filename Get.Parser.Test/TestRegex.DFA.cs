@@ -1,4 +1,5 @@
 ﻿
+using Get.PLShared;
 using System.Collections;
 
 namespace Get.Parser.Test
@@ -294,6 +295,8 @@ namespace Get.Parser.Test
         }
         record NonTerminalValue(NonTerminal Type) : INonTerminalValue
         {
+            public Position Start { get; set; }
+            public Position End { get; set; }
             ISyntaxElement ISyntaxElementValue.WithoutValue => new NonTerminalWrapper(Type);
         }
         record struct TerminalWrapper(Terminal Type) : ITerminal

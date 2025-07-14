@@ -1,0 +1,18 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+	<PropertyGroup>
+		<OutputType>Exe</OutputType>
+		<TargetFramework>net9.0</TargetFramework>
+		<ImplicitUsings>enable</ImplicitUsings>
+		<Nullable>enable</Nullable>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<ProjectReference Include="..\Get.LangSupport\Get.LangSupport.csproj" />
+		<ProjectReference Include="..\Get.Lexer.SourceGenerator\Get.Lexer.SourceGenerator.csproj" ReferenceOutputAssembly="False" OutputItemType="Analyzer" />
+		<ProjectReference Include="..\Get.Lexer\Get.Lexer.csproj" />
+		<ProjectReference Include="..\Get.Parser.SourceGenerator\Get.Parser.SourceGenerator.csproj" ReferenceOutputAssembly="False" OutputItemType="Analyzer" />
+		<ProjectReference Include="..\Get.Parser\Get.Parser.csproj" />
+	</ItemGroup>
+
+</Project>

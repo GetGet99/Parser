@@ -37,6 +37,7 @@ public class RegexAttribute([StringSyntax(StringSyntaxAttribute.Regex)] string R
     /// For <see cref="RegexAttribute{T}"/>, <see cref="ShouldReturnToken"/> must be true, and the implementation method will be called.
     /// </summary>
     public bool ShouldReturnToken { get; set; } = true;
+    public string InputRegex { get; } = Regex;
 }
 [AttributeUsage(AttributeTargets.Field, AllowMultiple = true)]
 public class StringAttribute(string Exact) : Attribute;

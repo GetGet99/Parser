@@ -1,4 +1,6 @@
-﻿namespace Get.Parser;
+﻿using Get.PLShared;
+
+namespace Get.Parser;
 
 public abstract class ParserBase<Terminal, NonTerminal, TOut>
     where Terminal : struct, Enum where NonTerminal : struct, Enum
@@ -96,24 +98,32 @@ public abstract class ParserBase<Terminal, NonTerminal, TOut>
     {
         public override string ToString() => NonTerminal.ToString();
     }
-    readonly record struct NonTerminalValue(NonTerminal NonTerminal) : INonTerminalValue
+    record class NonTerminalValue(NonTerminal NonTerminal) : INonTerminalValue
     {
+        public Position Start { get; set; }
+        public Position End { get; set; }
         ISyntaxElement ISyntaxElementValue.WithoutValue => new NonTerminalWrapper(NonTerminal);
         public override string ToString() => $"{NonTerminal}";
     }
-    readonly record struct NonTerminalValue<T>(NonTerminal NonTerminal, T Value) : INonTerminalValue<T>
+    record class NonTerminalValue<T>(NonTerminal NonTerminal, T Value) : INonTerminalValue<T>
     {
+        public Position Start { get; set; }
+        public Position End { get; set; }
         ISyntaxElement ISyntaxElementValue.WithoutValue => new NonTerminalWrapper(NonTerminal);
         public override string ToString() => $"{NonTerminal}[{Value}]";
     }
-    readonly record struct TerminalValue<T>(Terminal Terminal, T Value) : ITerminalValue<T>
+    record class TerminalValue<T>(Terminal Terminal, T Value) : ITerminalValue<T>
     {
+        public Position Start { get; set; }
+        public Position End { get; set; }
         ISyntaxElement ISyntaxElementValue.WithoutValue => new TerminalWrapper(Terminal);
         ITerminal ITerminalValue.WithoutValue => new TerminalWrapper(Terminal);
         public override string ToString() => $"{Terminal}[{Value}]";
     }
-    readonly record struct TerminalValue(Terminal Terminal) : ITerminalValue
+    record class TerminalValue(Terminal Terminal) : ITerminalValue
     {
+        public Position Start { get; set; }
+        public Position End { get; set; }
         ISyntaxElement ISyntaxElementValue.WithoutValue => new TerminalWrapper(Terminal);
         ITerminal ITerminalValue.WithoutValue => new TerminalWrapper(Terminal);
         public override string ToString() => $"{Terminal}";

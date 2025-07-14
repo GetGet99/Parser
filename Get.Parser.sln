@@ -33,6 +33,12 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Regex", "Regex", "{BECD41F3
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Get.RegexMachine.Test", "Get.RegexMachine.Test\Get.RegexMachine.Test.csproj", "{28371812-FE7D-4F20-8469-0CCD32AA382C}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Get.LangSupport", "Get.LangSupport\Get.LangSupport.csproj", "{AD810228-03CE-45CC-B747-CE8D647A3F1E}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "LangSupport", "LangSupport", "{02EA681E-C7D8-13C7-8484-4AC65E1B71E8}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Get.LangSupport.Test", "Get.LangSupport.Test\Get.LangSupport.Test.csproj", "{0D47D7BD-D4C5-4CC3-9D7C-FE344B8C4140}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -79,6 +85,14 @@ Global
 		{28371812-FE7D-4F20-8469-0CCD32AA382C}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{28371812-FE7D-4F20-8469-0CCD32AA382C}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{28371812-FE7D-4F20-8469-0CCD32AA382C}.Release|Any CPU.Build.0 = Release|Any CPU
+		{AD810228-03CE-45CC-B747-CE8D647A3F1E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{AD810228-03CE-45CC-B747-CE8D647A3F1E}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{AD810228-03CE-45CC-B747-CE8D647A3F1E}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{AD810228-03CE-45CC-B747-CE8D647A3F1E}.Release|Any CPU.Build.0 = Release|Any CPU
+		{0D47D7BD-D4C5-4CC3-9D7C-FE344B8C4140}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{0D47D7BD-D4C5-4CC3-9D7C-FE344B8C4140}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{0D47D7BD-D4C5-4CC3-9D7C-FE344B8C4140}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{0D47D7BD-D4C5-4CC3-9D7C-FE344B8C4140}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -94,6 +108,11 @@ Global
 		{9B50AE4D-44B5-4FF8-B2CD-6AB8E432D09D} = {E1E0C6B8-B24B-43EB-ABEF-D15D1AD0F571}
 		{29DBF0FF-1F4A-4D60-8913-B7ED7B3C9A76} = {E1E0C6B8-B24B-43EB-ABEF-D15D1AD0F571}
 		{28371812-FE7D-4F20-8469-0CCD32AA382C} = {BECD41F3-6CE8-4272-9190-E4F3B9F342EC}
+		{AD810228-03CE-45CC-B747-CE8D647A3F1E} = {02EA681E-C7D8-13C7-8484-4AC65E1B71E8}
+		{0D47D7BD-D4C5-4CC3-9D7C-FE344B8C4140} = {02EA681E-C7D8-13C7-8484-4AC65E1B71E8}
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {8F15FCBA-C960-4000-BFB6-3337C19AB529}
 	EndGlobalSection
 	GlobalSection(SharedMSBuildProjectFiles) = preSolution
 		Get.Lexer.Shared\Get.Lexer.Shared.projitems*{21ad9d2d-a0ce-47e9-8dca-2e6d94ccd570}*SharedItemsImports = 5

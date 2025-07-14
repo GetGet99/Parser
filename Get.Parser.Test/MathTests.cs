@@ -73,6 +73,8 @@ static class MathTests
         public INonTerminalValue GetValue(ISyntaxElementValue[] value) => new NTV(target, f(value));
         class NTV(INonTerminal type, decimal val) : INonTerminalValue<decimal>
         {
+            public Position Start { get; set; }
+            public Position End { get; set; }
             public decimal Value => val;
             public ISyntaxElement WithoutValue => type;
         }
@@ -83,6 +85,8 @@ static class MathTests
     }
     class Terminal : ITerminal, ITerminalValue
     {
+        public Position Start { get; set; }
+        public Position End { get; set; }
         public string Value { get; }
 
         public ITerminal WithoutValue => this;
@@ -105,6 +109,8 @@ static class MathTests
     }
     class IntTerminal(decimal val) : ITerminal, ITerminalValue<decimal>
     {
+        public Position Start { get; set; }
+        public Position End { get; set; }
         public decimal Value { get; } = val;
 
         public ITerminal WithoutValue => number;

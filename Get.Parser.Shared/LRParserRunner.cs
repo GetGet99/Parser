@@ -1,4 +1,5 @@
-﻿using System.Diagnostics;
+﻿using Get.PLShared;
+using System.Diagnostics;
 namespace Get.Parser;
 public static class LRParserRunner<TProgram>
 {
@@ -13,24 +14,28 @@ public static class LRParserRunner<TProgram>
             try
             {
                 act = dfa.GetAction(stack, nextToken);
-            } catch (LRParserRuntimeException e)
+            }
+            catch (LRParserRuntimeException e)
             {
                 // error handling
                 if (stack.Count is 0)
                     // i don't know
                     throw;
-                stack[^1] = new ErrorTerminalValue(e);
+                var err = new ErrorTerminalValue(e) { Start = stack[^1].End, End = stack[^1].End };
+                stack[^1] = err;
                 while (stack.Count >= 1)
                 {
                     try
                     {
                         act = dfa.GetAction(stack, nextToken);
                         goto resolved;
-                    } catch
+                    }
+                    catch
                     {
                         if (stack.Count >= 2)
                         {
                             // skip error token at ^1, remove ^2
+                            err.Start = stack[^2].Start;
                             stack.RemoveAt(stack.Count - 2);
                             continue;
                         }
@@ -62,6 +67,15 @@ public static class LRParserRunner<TProgram>
                 var val = rule.GetValue(values);
                 if (!val.WithoutValue.Equals(reduce.Rule.Target))
                     throw new InvalidDataException("The returned symbol does not match the given rule");
+                if (values.Length > 0)
+                {
+                    val.Start = values[0].Start;
+                    val.End = values[^1].End;
+                }
+                else if (stack.Count > 0)
+                {
+                    val.Start = val.End = stack[^1].End;
+                }
                 stack.Add(val);
                 goto rerun; // rerun, as we do not want to read the next token yet.
             }
@@ -84,13 +98,17 @@ public static class LRParserRunner<TProgram>
         while (true)
             yield return null;
     }
-    
+
 }
 public class ErrorTerminalValue(LRParserRuntimeException exception) : ITerminalValue<LRParserRuntimeException>
 {
     public ITerminal WithoutValue => ErrorTerminal.Singleton;
     ISyntaxElement ISyntaxElementValue.WithoutValue => ErrorTerminal.Singleton;
     public LRParserRuntimeException Value { get; } = exception;
+
+    public required Position Start { get; set; }
+
+    public required Position End { get; set; }
 }
 public class LRParserRuntimeException(string message) : Exception(message);
 public class LRParserRuntimeUnexpectedInputException(ISyntaxElementValue unexpectedElement) : LRParserRuntimeException($"Unexpected element: {unexpectedElement}")
@@ -107,6 +125,8 @@ public partial interface ICFGRule
 }
 public interface ISyntaxElementValue
 {
+    Position Start { get; set; }
+    Position End { get; set; }
     ISyntaxElement WithoutValue { get; }
 }
 public interface ISyntaxElementValue<T> : ISyntaxElementValue

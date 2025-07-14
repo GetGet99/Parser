@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using Get.PLShared;
+using System.Collections.Generic;
 using System.Data;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
@@ -467,7 +468,10 @@ public record struct LRDFAReduce(ICFGRule Rule) : ILRDFAAction
     }
 }
 public interface ILRDFAAction;
-public interface ISyntaxElement;
+public interface ISyntaxElement
+{
+
+}
 public interface INonTerminal : ISyntaxElement;
 public interface ITerminal : ISyntaxElement;
 //public interface ITerminalWithCustomPrecedence : ITerminal
