@@ -90,9 +90,9 @@ public partial class TextmateGrammarMetadata
 
 public static class TextmateGrammarGenerator
 {
-    public static Dictionary<string, object> GenerateRepository<T>()
+    public static Dictionary<string, object> GenerateRepository<TLexer>()
     {
-        var type = typeof(T);
+        var type = typeof(TLexer);
         var lexerAttr = type.GetCustomAttributes()
             .FirstOrDefault(attr => attr.GetType().IsGenericType &&
                                     attr.GetType().GetGenericTypeDefinition() == typeof(LexerAttribute<>));
@@ -154,7 +154,7 @@ public static class TextmateGrammarGenerator
                         var rule = new Dictionary<string, object>
                         {
                             ["name"] = scopeAttr.Scope,
-                            ["match"] = regex
+                            ["match"] = scopeAttr.AddBoundary ? @$"\b{regex}\b" : regex
                         };
 
                         if (!rulesByPriority.TryGetValue(scopeAttr.Priority, out var list))

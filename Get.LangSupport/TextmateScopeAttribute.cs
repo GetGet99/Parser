@@ -1,4 +1,6 @@
-﻿namespace Get.LangSupport;
+﻿using System.Diagnostics.CodeAnalysis;
+
+namespace Get.LangSupport;
 
 [AttributeUsage(AttributeTargets.Field, AllowMultiple = true, Inherited = false)]
 public class TextmateScopeAttribute(string scope) : Attribute
@@ -6,10 +8,12 @@ public class TextmateScopeAttribute(string scope) : Attribute
     public string Scope { get; } = scope;
     public string Key { get; set; } = scope.Split('.').Last();
     public int Priority { get; set; } = 0; // default lowest priority
+    public bool AddBoundary { get; set; } = false;
     /// <summary>
     /// If this is null, it is inherited from ALL of the [Regex] attributes. Otherwise,
     /// we will use these ones.
     /// </summary>
+    [StringSyntax(StringSyntaxAttribute.Regex)]
     public string[]? Regexes { get; set; }
     /// <summary>
     /// Optional: Begin regex for multi-line constructs.
@@ -57,6 +61,16 @@ public enum StringType
     Interpolated,
     Other
 }
+public enum StringQuotedType
+{
+    Single,
+    Double,
+    Triple,
+    Interpolated,
+    Unquoted,
+    Other
+}
+
 
 public enum VariableType
 {
@@ -82,34 +96,67 @@ public enum EntityTypeType
     Struct,
     Other
 }
-
-public class KeywordScopeAttribute : TextmateScopeAttribute
+public enum ConstantLanguageType
 {
-    public KeywordScopeAttribute(string name) : base($"keyword.{name}") { }
-    public KeywordScopeAttribute(KeywordType type) : this(type.ToString().ToLower()) { }
+    Boolean,
+    Null,
+    Undefined,
+    This,
+    Super,
+    Self,
+    Infinity,
+    NaN,
+    Default,
+    Arguments,
+    Global,
+    Window,
+    File,     // For __FILE__
+    Line,     // For __LINE__
 }
 
-public class ConstantScopeAttribute : TextmateScopeAttribute
+public class TextmateKeywordScopeAttribute : TextmateScopeAttribute
 {
-    public ConstantScopeAttribute(string name) : base($"constant.{name}") { }
-    public ConstantScopeAttribute(ConstantType type) : this(type.ToString().ToLower()) { }
+    public TextmateKeywordScopeAttribute(string name) : base($"keyword.{name}") { AddBoundary = true; }
+    public TextmateKeywordScopeAttribute(KeywordType type) : this(type.ToString().ToLower()) { }
 }
 
-public class StringScopeAttribute : TextmateScopeAttribute
+public class TextmateConstantScopeAttribute : TextmateScopeAttribute
 {
-    public StringScopeAttribute(string name) : base($"string.{name}") { }
-    public StringScopeAttribute(StringType type) : this(type.ToString().ToLower()) { }
+    public TextmateConstantScopeAttribute(string name) : base($"constant.{name}") { AddBoundary = true; }
+    public TextmateConstantScopeAttribute(ConstantType type) : this(type.ToString().ToLower()) { }
 }
 
-public class CommentScopeAttribute : TextmateScopeAttribute
+public class TextmateConstantLanguageScopeAttribute : TextmateScopeAttribute
 {
-    public CommentScopeAttribute() : base("comment") { }
+    public TextmateConstantLanguageScopeAttribute(string name) : base($"constant.language.{name}") { }
+    public TextmateConstantLanguageScopeAttribute(ConstantLanguageType type) : this(type.ToString().ToLower()) { }
 }
 
-public class VariableScopeAttribute : TextmateScopeAttribute
+public class TextmateStringScopeAttribute : TextmateScopeAttribute
 {
-    public VariableScopeAttribute(string name = "other.readwrite") : base($"variable.{name}") { }
-    public VariableScopeAttribute(VariableType type) : this(type.ToString().ToLower()) { }
+    public TextmateStringScopeAttribute(string name) : base($"string.{name}") { }
+    public TextmateStringScopeAttribute(StringType type) : this(type.ToString().ToLower()) { }
+}
+
+public class TextmateStringQuotedScopeAttribute : TextmateScopeAttribute
+{
+    public TextmateStringQuotedScopeAttribute(string name)
+        : base($"string.quoted.{name}") { }
+
+    public TextmateStringQuotedScopeAttribute(StringQuotedType type)
+        : this(type.ToString().ToLower()) { }
+}
+
+
+public class TextmateCommentScopeAttribute : TextmateScopeAttribute
+{
+    public TextmateCommentScopeAttribute() : base("comment") { }
+}
+
+public class TextmateVariableScopeAttribute : TextmateScopeAttribute
+{
+    public TextmateVariableScopeAttribute(string name = "other.readwrite") : base($"variable.{name}") { }
+    public TextmateVariableScopeAttribute(VariableType type) : this(type.ToString().ToLower()) { }
 }
 
 public enum OperatorType
@@ -119,31 +166,68 @@ public enum OperatorType
     Comparison,
     Logical,
     Increment,
+    Decrement,
     Ternary,
     Other
 }
 
-public class OperatorScopeAttribute : TextmateScopeAttribute
+public class TextmateOperatorScopeAttribute : TextmateScopeAttribute
 {
-    public OperatorScopeAttribute(string opType = "arithmetic") : base($"keyword.operator.{opType}") { }
-    public OperatorScopeAttribute(OperatorType opType) : this(opType.ToString().ToLower()) { }
+    public TextmateOperatorScopeAttribute(string opType = "arithmetic") : base($"keyword.operator.{opType}") { }
+    public TextmateOperatorScopeAttribute(OperatorType opType) : this(opType.ToString().ToLower()) { }
 }
 
-public class EntityNameFunctionScopeAttribute : TextmateScopeAttribute
+public class TextmateEntityNameFunctionScopeAttribute : TextmateScopeAttribute
 {
-    public EntityNameFunctionScopeAttribute(string name) : base($"entity.name.function.{name}") { }
-    public EntityNameFunctionScopeAttribute(EntityFunctionType type) : this(type.ToString().ToLower()) { }
+    public TextmateEntityNameFunctionScopeAttribute(string name) : base($"entity.name.function.{name}") { }
+    public TextmateEntityNameFunctionScopeAttribute(EntityFunctionType type) : this(type.ToString().ToLower()) { }
 }
 
-public class EntityNameTypeScopeAttribute : TextmateScopeAttribute
+public class TextmateEntityNameTypeScopeAttribute : TextmateScopeAttribute
 {
-    public EntityNameTypeScopeAttribute(string name) : base($"entity.name.type.{name}") { }
-    public EntityNameTypeScopeAttribute(EntityTypeType type) : this(type.ToString().ToLower()) { }
+    public TextmateEntityNameTypeScopeAttribute(string name) : base($"entity.name.type.{name}") { }
+    public TextmateEntityNameTypeScopeAttribute(EntityTypeType type) : this(type.ToString().ToLower()) { }
 }
 
-public class StorageTypeScopeAttribute : TextmateScopeAttribute
+public class TextmateStorageTypeScopeAttribute : TextmateScopeAttribute
 {
-    public StorageTypeScopeAttribute() : base("storage.type") { }
+    public TextmateStorageTypeScopeAttribute() : base("storage.type") { }
+}
+public enum PunctuationType
+{
+    Accessor,         // `.`
+    Definition,       // `=` in variable declarations or function defs
+    Terminator,       // `;`
+    Bracket,          // `{`, `}`, `(`, `)`, `[`, `]`
+    String,           // `"`, `'`, or escapes inside strings
+    Embedded,         // Punctuation used to embed other langs (e.g., `{{`, `}}`)
+    Section,          // For section headers (rare, e.g., Markdown)
+    Whitespace,       // Not commonly scoped but sometimes used
+    Other             // Catch-all fallback
+}
+public enum PunctuationSeparatorType
+{
+    Comma,        // `,`
+    Colon,        // `:`
+    Semicolon,    // `;`
+    Pipe,         // `|`
+    Dot,          // `.` (alternative to Accessor)
+    Other
+}
+
+
+public class TextmatePunctuationScopeAttribute : TextmateScopeAttribute
+{
+    public TextmatePunctuationScopeAttribute(string name) : base($"punctuation.{name}") { }
+    public TextmatePunctuationScopeAttribute(PunctuationType type) : this(type.ToString().ToLower()) { }
+}
+public class TextmatePunctuationSeparatorScopeAttribute : TextmateScopeAttribute
+{
+    public TextmatePunctuationSeparatorScopeAttribute(string name)
+        : base($"punctuation.separator.{name}") { }
+
+    public TextmatePunctuationSeparatorScopeAttribute(PunctuationSeparatorType type)
+        : this(type.ToString().ToLower()) { }
 }
 
 public enum NumericType
@@ -157,14 +241,14 @@ public enum NumericType
     Other
 }
 
-public class NumericScopeAttribute : TextmateScopeAttribute
+public class TextmateConstantNumericScopeAttribute : TextmateScopeAttribute
 {
-    public NumericScopeAttribute(string name = "")
+    public TextmateConstantNumericScopeAttribute(string name = "")
         : base(string.IsNullOrEmpty(name) ? "constant.numeric" : $"constant.numeric.{name}")
     {
     }
 
-    public NumericScopeAttribute(NumericType type)
+    public TextmateConstantNumericScopeAttribute(NumericType type)
         : this(type == NumericType.Default ? "" : type.ToString().ToLower())
     {
     }
