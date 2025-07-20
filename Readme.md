@@ -1,41 +1,54 @@
-# Get's Parser and Lexer (ALPHA)
+# Get’s Parser and Lexer (BETA)
 
-A general lexer and LR(1) parser implementation in C#.
+A general-purpose **lexer** and **LR(1) parser** framework for C#, designed with **analyzers** to catch conflicts and bugs **as you type** — no custom extensions required.
 
-## Disclaimer
+## ⚠️ Disclaimer
 
-Since this project is still in ALPHA state, bugs may
-(and is likely) occur. Please report the bugs via the Issues tab.
+This project is currently in **BETA**. Bugs may exist. Please report issues via the Issues tab.
 
-## Lexer
+## ✨ Key Features
 
-Lexer takes in an input stream of characters, and output
-`IEnumerable<IToken>`. After a sequence of character is
-found, it can call user defined function to provide custom
-value for that token, which the lexer will emit as `IToken<T>`.
-Lexer also has some APIs such as `GoTo(state)` and
-`Reverse(characters)` to allow some custom parsing.
+* **Real-time conflict detection**: Lexer ambiguities, shift/reduce, and reduce/reduce parser conflicts are reported as diagnostics — no need to run your program to catch critical grammar errors.
+* **Seamless IDE support**: Designed to work with any C# IDE that supports Roslyn analyzers and source generators — such as Visual Studio. No extensions required.
+* **Two authoring modes**:
+  * **Attribute-based (recommended)**: Full IntelliSense + diagnostics support via source generators.
+  * **Manual in-code**: Build lexers/parsers programmatically (no attributes or generators), useful for advanced scenarios or experimentation — but **no analyzer support**.
+* **Custom semantic actions**: Embed custom C# logic for token values and grammar rules.
+* **Fully integrated into C# projects**: Define your entire grammar directly in C# — no external DSLs or tooling needed.
 
-See Get.Lexer.Test for example. The recommended approach
-is to use the source generator (see `CustomLexerSourceGen.cs`),
-although manual approach is also possible (see `CustomLexer.cs`).
+## 🧱 Lexer
 
-## LR(1) parser
+The lexer takes an input stream of characters and emits `IEnumerable<IToken>`, optionally carrying values via user-defined callbacks. It supports:
 
-The LR(1) parser takes in the list of context free grammar
-definition, and a list of precedence. Grammar Definition
-Rules can contain user-defined functions that can generate
-the value associated with the given nonterminal. The list
-of precedence can be used to resolve some shift-reduce conflicts.
+* **Lexer state machines** via `GoTo(state)` and `Reverse(characters)`
+* **Custom token processing** using semantic actions
 
-The parser currently will error on ambiguous grammar with
-shift-reduce conflict or reduce-reduce conflict rather
-than having predefined conflict resolvation.
+### ✅ Usage Options
 
-See Get.Parser.Test for example. The recommended approach
-is to use the source generator (see `TestSourceGenMath.cs`),
-although manual approach is also possible (see `TestRegex.DFA.cs`
-or `TestManualRuleAttr.DFA.cs` for example).
+* **Recommended**: Use the source generator with C# attributes (`CustomLexerSourceGen.cs`) for IntelliSense and diagnostics.
+* **Advanced/manual**: Build lexer rules directly in code (`CustomLexer.cs`). This provides flexibility but **does not support analyzers**.
 
-Note that the source generator for parser is still not mature.
-It may not report all errors yet.
+---
+
+## 📚 LR(1) Parser
+
+The parser processes context-free grammar definitions, resolving them using **LR(1)** parsing logic. It supports:
+
+* **User-defined semantic actions** embedded in C#
+* **Precedence declarations** for disambiguating operator-like rules
+* **Real-time validation** when using the attribute-based approach
+
+### ✅ Usage Options
+
+* **Recommended**: Use the source generator with annotated methods (`TestSourceGenMath.cs`) for full IDE support.
+* **Advanced/manual**: Define grammar rules directly in code (`TestRegex.DFA.cs`, `TestManualRuleAttr.DFA.cs`). This mode skips analyzers.
+
+## 🔍 Analyzers
+
+Our analyzer tooling surfaces:
+
+* **Lexer conflicts**: Detected when rules overlap or produce ambiguity
+* **Parser conflicts**: Shift/reduce and reduce/reduce issues
+* **Inline diagnostics**: All shown directly in your IDE (e.g., Visual Studio)
+
+> 📌 **Analyzer support is only available when using the attribute-based (source generator) mode.** Manual in-code grammar definitions won’t receive analyzer feedback.
