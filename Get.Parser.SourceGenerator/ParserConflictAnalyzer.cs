@@ -207,6 +207,7 @@ partial class ParserConflictAnalyzer() : AttributeBaseAnalyzer<ParserAttribute, 
             var startNode = args.AttributeDatas[0].Wrapper.startNode;
             new LRParserDFAGen(EqualityComparer<INonTerminal>.Default, EqualityComparer<ITerminal>.Default).CreateDFA(
                 rules, new NonTerminal(startNode) { Name = NonTerminalNames[startNode] },
+                precedenceList.Count is 0 ? [] :
                 [.. from prec in precedenceList select
                     ((ITerminal[])[.. from term in prec.RawEnumTerminals select (ITerminal)new Terminal(term) { Name = TerminalNames[term] }],
                     prec.Associativity)]
