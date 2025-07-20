@@ -12,11 +12,16 @@ partial class CustomLexerSourceGen(ITextSeekable text) : LexerBase<
     {
         return int.Parse(MatchedText);
     }
+    private partial int BuildInt1()
+    {
+        return int.Parse(MatchedText);
+    }
     private partial string BuildString()
     {
         return MatchedText;
     }
     public enum State { Initial }
+    [CompileTimeConflictCheck]
     public enum Terminals
     {
         [Type<int>]

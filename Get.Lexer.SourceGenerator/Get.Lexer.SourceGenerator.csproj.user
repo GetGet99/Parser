@@ -4,6 +4,6 @@
     <DebuggerFlavor>ProjectDebugger</DebuggerFlavor>
   </PropertyGroup>
   <PropertyGroup>
-    <ActiveDebugProfile>Source Gen - QuickCode</ActiveDebugProfile>
+    <ActiveDebugProfile>Source Gen - Get.Lexer.Test</ActiveDebugProfile>
   </PropertyGroup>
 </Project>

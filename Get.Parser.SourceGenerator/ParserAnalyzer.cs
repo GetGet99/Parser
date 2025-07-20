@@ -2,7 +2,9 @@
 using Get.EasyCSharp.GeneratorTools.SyntaxCreator.Members;
 using Get.Lexer;
 using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
+using System.Collections.Immutable;
 using System.Text;
 
 namespace Get.Parser.SourceGenerator;
@@ -13,33 +15,112 @@ namespace Get.Parser.SourceGenerator;
 [AddAttributeConverter(typeof(Lexer.TypeAttribute<TempType>), MethodName = "LexerTypeAttrGen", StructName = "LexerTypeAttributeWrapper")]
 [AddAttributeConverter(typeof(RegexAttribute<TempType>), ParametersAsString = "\"\", \"\"")]
 [AddAttributeConverter(typeof(PrecedenceAttribute))]
-partial class ParserGenerator : AttributeBaseGenerator<ParserAttribute, ParserGenerator.ParserAttributeWarpper, TypeDeclarationSyntax, INamedTypeSymbol>
+[Microsoft.CodeAnalysis.Diagnostics.DiagnosticAnalyzer(LanguageNames.CSharp)]
+partial class ParserAnalyzer() : AttributeBaseAnalyzer<ParserAttribute, ParserAnalyzer.ParserAttributeWarpper, TypeDeclarationSyntax, INamedTypeSymbol>(SyntaxKind.ClassDeclaration)
 {
     static RuleAttrSyntaxParser RuleAttrSyntaxParser { get; } = new RuleAttrSyntaxParser();
     static PrecedenceAttrSyntaxParser PrecedenceAttrSyntaxParser { get; } = new PrecedenceAttrSyntaxParser();
-    class NonLocalizableString(string s) : LocalizableString
-    {
-        public string DiagonosticString { get; } = s;
-        protected override bool AreEqual(object? other) => other is NonLocalizableString l && l.DiagonosticString == DiagonosticString;
-        protected override int GetHash() => DiagonosticString.GetHashCode();
-        protected override string GetText(IFormatProvider? formatProvider) => DiagonosticString;
-    }
-    protected override string? OnPointVisit(OnPointVisitArguments args)
+
+
+    public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics => ImmutableArray.Create(
+        NotParserBase,
+        ParserRuleSyntaxErrorBase,
+        ParserPrecedenceSyntaxErrorBase,
+        UserFuncUsedParserFuncArgsKeyword,
+        ParserFuncInvalidArgs,
+        ParserFuncDuplicateArgs,
+        ParserFuncMissingArgs,
+        ParserRuleNoTypeReturn
+    );
+    readonly static DiagnosticDescriptor NotParserBase = new(
+        "GP1001",
+        "Type does not implement Get.Parser.ParserBase",
+        "Type must not implement Get.Parser.ParserBase",
+        "Get.Parser",
+        DiagnosticSeverity.Error,
+        true
+    );
+    readonly static DiagnosticDescriptor ParserRuleSyntaxErrorBase = new(
+        "GP1002",
+        $"Bad arguments to {nameof(RuleAttribute)}",
+        "{0} {1}",
+        "Get.Parser",
+        DiagnosticSeverity.Error,
+        true
+    );
+    readonly static DiagnosticDescriptor ParserRuleNoTypeParam = new(
+        "GP1003",
+        "The given element is used as an argument, but it has no type",
+        "{0} was used as an argument ({1}), but it has no type",
+        "Get.Parser",
+        DiagnosticSeverity.Error,
+        true
+    );
+    readonly static DiagnosticDescriptor ParserPrecedenceSyntaxErrorBase = new(
+        "GP1004",
+        $"Bad arguments to {nameof(PrecedenceAttribute)}",
+        "{0} {1}",
+        "Get.Parser",
+        DiagnosticSeverity.Error,
+        true
+    );
+    readonly static DiagnosticDescriptor UserFuncUsedParserFuncArgsKeyword = new(
+        "GP1005",
+        $"Invalid arguments to user function",
+        "Argument {0} is for parser reduce function, but is used for user's reduce function {1}",
+        "Get.Parser",
+        DiagnosticSeverity.Error,
+        true
+    );
+    readonly static DiagnosticDescriptor ParserFuncInvalidArgs = new(
+        "GP1006",
+        $"Invalid arguments to parser function",
+        "Argument {0} is not valid for the parser func (expects {1})",
+        "Get.Parser",
+        DiagnosticSeverity.Error,
+        true
+    );
+    readonly static DiagnosticDescriptor ParserFuncDuplicateArgs = new(
+        "GP1007",
+        $"Invalid arguments to parser function",
+        "Argument {0} is duplicated",
+        "Get.Parser",
+        DiagnosticSeverity.Error,
+        true
+    );
+    readonly static DiagnosticDescriptor ParserFuncMissingArgs = new(
+        "GP1008",
+        $"Missing arguments to parser function",
+        "Argument {0} is missing",
+        "Get.Parser",
+        DiagnosticSeverity.Error,
+        true
+    );
+    readonly static DiagnosticDescriptor ParserRuleNoTypeReturn = new(
+        "GP1003",
+        "The given reduce function requires return type",
+        "The given reduce function {0} requires target token to have a type",
+        "Get.Parser",
+        DiagnosticSeverity.Error,
+        true
+    );
+    protected override void OnPointVisit(OnPointVisitArguments args)
     {
         if (!(args.Symbol.BaseType?.ToString().StartsWith("Get.Parser.ParserBase") ?? false))
         {
-            return null;
+            args.ReportDiagnostic(Diagnostic.Create(NotParserBase, args.SyntaxNode.BaseList?.GetLocation() ?? args.SyntaxNode.Identifier.GetLocation()));
+            return;
         }
         if (args.Symbol.BaseType.TypeArguments.Length != 3)
         {
-            return null;
+            args.ReportDiagnostic(Diagnostic.Create(NotParserBase, args.SyntaxNode.BaseList?.GetLocation() ?? args.SyntaxNode.Identifier.GetLocation()));
+            return;
         }
-        return OnPointVisit2(args).JoinDoubleNewLine();
+        OnPointVisit2(args);
     }
-    protected IEnumerable<string> OnPointVisit2(OnPointVisitArguments args)
+    protected void OnPointVisit2(OnPointVisitArguments args)
     {
-        var genContext = args.GenContext;
-        var diagnostics = args.Diagnostics;
+        var genContext = args.Context;
         var lexerSymbol = args.Symbol;
         var thisType = args.Symbol;
         var baseType = args.Symbol.BaseType!;
@@ -135,10 +216,24 @@ partial class ParserGenerator : AttributeBaseGenerator<ParserAttribute, ParserGe
             }
             catch (LRParserRuntimeUnexpectedInputException e)
             {
+                var syn = raw.ApplicationSyntaxReference;
+                args.ReportDiagnostic(Diagnostic.Create(
+                    ParserRuleSyntaxErrorBase,
+                    syn is null ? thisType.Locations[0] : Location.Create(syn.SyntaxTree, syn.Span),
+                    "Unexpected",
+                    e.UnexpectedElement
+                ));
                 goto exit;
             }
             catch (LRParserRuntimeUnexpectedEndingException e)
             {
+                var syn = raw.ApplicationSyntaxReference;
+                args.ReportDiagnostic(Diagnostic.Create(
+                    ParserRuleSyntaxErrorBase,
+                    syn is null ? thisType.Locations[0] : Location.Create(syn.SyntaxTree, syn.Span),
+                    "Expected",
+                    $"{string.Join(", ", (object?[])e.ExpectedInputs)} after the last parameter"
+                ));
                 goto exit;
             }
         }
@@ -161,24 +256,24 @@ partial class ParserGenerator : AttributeBaseGenerator<ParserAttribute, ParserGe
                 }
                 catch (LRParserRuntimeUnexpectedInputException e)
                 {
-                    //var syn = raw.ApplicationSyntaxReference;
-                    //args.Diagnostics.Add(Diagnostic.Create(
-                    //    ParserRuleSyntaxErrorBase,
-                    //    syn is null ? nt.Locations[0] : Location.Create(syn.SyntaxTree, syn.Span),
-                    //    "Unexpected",
-                    //    e.UnexpectedElement
-                    //));
+                    var syn = raw.ApplicationSyntaxReference;
+                    args.ReportDiagnostic(Diagnostic.Create(
+                        ParserRuleSyntaxErrorBase,
+                        syn is null ? nt.Locations[0] : Location.Create(syn.SyntaxTree, syn.Span),
+                        "Unexpected",
+                        e.UnexpectedElement
+                    ));
                     continue;
                 }
                 catch (LRParserRuntimeUnexpectedEndingException e)
                 {
-                    //var syn = raw.ApplicationSyntaxReference;
-                    //args.Diagnostics.Add(Diagnostic.Create(
-                    //    ParserRuleSyntaxErrorBase,
-                    //    syn is null ? nt.Locations[0] : Location.Create(syn.SyntaxTree, syn.Span),
-                    //    "Expected",
-                    //    $"{string.Join(", ", (object?[])e.ExpectedInputs)} after the last parameter"
-                    //));
+                    var syn = raw.ApplicationSyntaxReference;
+                    args.ReportDiagnostic(Diagnostic.Create(
+                        ParserRuleSyntaxErrorBase,
+                        syn is null ? nt.Locations[0] : Location.Create(syn.SyntaxTree, syn.Span),
+                        "Expected",
+                        $"{string.Join(", ", (object?[])e.ExpectedInputs)} after the last parameter"
+                    ));
                     continue;
                 }
                 static string ConstantParameterToString(Option option)
@@ -201,11 +296,10 @@ partial class ParserGenerator : AttributeBaseGenerator<ParserAttribute, ParserGe
                 }
                 var nttype = NonTerminalTypes[value];
                 var (eles, constParams, red, ruleprec) = rule;
-                string creation;
                 void Error(DiagnosticDescriptor desc, params object[] errorArgs)
                 {
                     var syn = raw.ApplicationSyntaxReference;
-                    args.Diagnostics.Add(Diagnostic.Create(
+                    args.ReportDiagnostic(Diagnostic.Create(
                         desc,
                         location: syn is null ? nt.Locations[0] : Location.Create(syn.SyntaxTree, syn.Span),
                         errorArgs
@@ -230,11 +324,11 @@ partial class ParserGenerator : AttributeBaseGenerator<ParserAttribute, ParserGe
                             }
                             else
                             {
-                                //Error(
-                                //    ParserRuleNoTypeParam,
-                                //    $"({(ele.Raw.IsTerminal ? "Terminal" : "NonTerminal")}){ele.Raw.RawEnum}",
-                                //    ele.AsArg
-                                //);
+                                Error(
+                                    ParserRuleNoTypeParam,
+                                    $"({(ele.Raw.IsTerminal ? "Terminal" : "NonTerminal")}){ele.Raw.RawEnum}",
+                                    ele.AsArg
+                                );
                                 reduceArgs.AppendLine(
                                     $"""
                                     // the given token does not have a type
@@ -245,32 +339,32 @@ partial class ParserGenerator : AttributeBaseGenerator<ParserAttribute, ParserGe
                         }
                         else if (ele.AsArg is ParserFuncsArgument pfa)
                         {
-                            //Error(
-                            //    ParserRuleNoTypeParam,
-                            //    pfa.ArgName.ToString(),
-                            //    red switch
-                            //    {
-                            //        ReduceMethod rd => rd.Name,
-                            //        ReduceConstructor rd => $"(constructor of {rd.Type_.Name})",
-                            //        _ => throw new InvalidCastException()
-                            //    }
-                            //);
+                            Error(
+                                ParserRuleNoTypeParam,
+                                pfa.ArgName.ToString(),
+                                red switch
+                                {
+                                    ReduceMethod rd => rd.Name,
+                                    ReduceConstructor rd => $"(constructor of {rd.Type_.Name})",
+                                    _ => throw new InvalidCastException()
+                                }
+                            );
                         }
                     }
                     foreach (var opt in constParams)
                     {
                         if (opt.ArgumentName is ParserFuncsArgument pfa)
                         {
-                            //Error(
-                            //    ParserRuleNoTypeParam,
-                            //    pfa.ArgName.ToString(),
-                            //    red switch
-                            //    {
-                            //        ReduceMethod rd => rd.Name,
-                            //        ReduceConstructor rd => $"(constructor of {rd.Type_.Name})",
-                            //        _ => throw new InvalidCastException()
-                            //    }
-                            //);
+                            Error(
+                                ParserRuleNoTypeParam,
+                                pfa.ArgName.ToString(),
+                                red switch
+                                {
+                                    ReduceMethod rd => rd.Name,
+                                    ReduceConstructor rd => $"(constructor of {rd.Type_.Name})",
+                                    _ => throw new InvalidCastException()
+                                }
+                            );
                             continue;
                         }
                         else if (opt.ArgumentName is StringArgument s)
@@ -304,28 +398,15 @@ partial class ParserGenerator : AttributeBaseGenerator<ParserAttribute, ParserGe
                         """,
                         _ => throw new InvalidCastException()
                     };
-                    creation =
-                        nttype is null ?
-                        $"""
-                        {reduceMethodCall};
-                        return CreateValue(({nonTerminalFT}){value});
-                        """ :
-                        $"""
-                        return CreateValue<{new FullType(nttype)}>(
-                            ({nonTerminalFT}){value},
-                            {reduceMethodCall.IndentWOF(1)}
-                        );
-                        """;
                 }
                 else if (red is ReduceParserFunc reduceParserFunc)
                 {
                     if (nttype is null)
                     {
-                        creation = $"return CreateValue(({nonTerminalFT}){value});";
-                        //Error(
-                        //    ParserRuleNoTypeReturn,
-                        //    reduceParserFunc.ParserFunc.ToString()
-                        //);
+                        Error(
+                            ParserRuleNoTypeReturn,
+                            reduceParserFunc.ParserFunc.ToString()
+                        );
                         break;
                     }
                     string? list = null;
@@ -341,11 +422,11 @@ partial class ParserGenerator : AttributeBaseGenerator<ParserAttribute, ParserGe
                                 {
                                     if (pfa.ArgName is not ParserFuncArgs.Value)
                                     {
-                                        //Error(
-                                        //    ParserFuncInvalidArgs,
-                                        //    pfa.ArgName.ToString(),
-                                        //    "VALUE"
-                                        //);
+                                        Error(
+                                            ParserFuncInvalidArgs,
+                                            pfa.ArgName.ToString(),
+                                            "VALUE"
+                                        );
                                         continue;
                                     }
                                     var type = (ele.Raw.IsTerminal ? TerminalTypes : NonTerminalTypes)[ele.Raw.RawEnum];
@@ -357,29 +438,29 @@ partial class ParserGenerator : AttributeBaseGenerator<ParserAttribute, ParserGe
                                         }
                                         else
                                         {
-                                            //Error(
-                                            //    ParserFuncDuplicateArgs,
-                                            //    pfa.ArgName
-                                            //);
+                                            Error(
+                                                ParserFuncDuplicateArgs,
+                                                pfa.ArgName
+                                            );
                                         }
                                     }
                                     else
                                     {
-                                        //Error(
-                                        //    ParserRuleNoTypeParam,
-                                        //    $"({(ele.Raw.IsTerminal ? "Terminal" : "NonTerminal")}){ele.Raw.RawEnum}",
-                                        //    pfa.ArgName.ToString()
-                                        //);
+                                        Error(
+                                            ParserRuleNoTypeParam,
+                                            $"({(ele.Raw.IsTerminal ? "Terminal" : "NonTerminal")}){ele.Raw.RawEnum}",
+                                            pfa.ArgName.ToString()
+                                        );
                                         val = $"/* the given token does not have a type */ default";
                                     }
                                 }
                                 else if (ele.AsArg is StringArgument s)
                                 {
-                                    //Error(
-                                    //    ParserFuncInvalidArgs,
-                                    //    s.ArgName,
-                                    //    reduceParserFunc.ParserFunc.ToString()
-                                    //);
+                                    Error(
+                                        ParserFuncInvalidArgs,
+                                        s.ArgName,
+                                        reduceParserFunc.ParserFunc.ToString()
+                                    );
                                 }
                                 else
                                 {
@@ -392,57 +473,40 @@ partial class ParserGenerator : AttributeBaseGenerator<ParserAttribute, ParserGe
                                 {
                                     if (pfa.ArgName is not ParserFuncArgs.Value)
                                     {
-                                        //Error(
-                                        //    ParserFuncInvalidArgs,
-                                        //    pfa.ArgName.ToString(),
-                                        //    "VALUE"
-                                        //);
+                                        Error(
+                                            ParserFuncInvalidArgs,
+                                            pfa.ArgName.ToString(),
+                                            "VALUE"
+                                        );
                                         continue;
                                     }
                                     if (val is null)
                                         val = ConstantParameterToString(opt);
                                     else
                                     {
-                                        //Error(
-                                        //    ParserFuncDuplicateArgs,
-                                        //    pfa.ArgName
-                                        //);
+                                        Error(
+                                            ParserFuncDuplicateArgs,
+                                            pfa.ArgName
+                                        );
                                     }
                                 }
                                 else if (opt.ArgumentName is StringArgument s)
                                 {
-                                    //Error(
-                                    //    ParserFuncInvalidArgs,
-                                    //    s.ArgName,
-                                    //    "VALUE"
-                                    //);
+                                    Error(
+                                        ParserFuncInvalidArgs,
+                                        s.ArgName,
+                                        "VALUE"
+                                    );
                                 }
                             }
                             if (val is null)
                             {
-                                //Error(
-                                //    ParserFuncMissingArgs,
-                                //    "VALUE"
-                                //);
-                                creation = "return default;";
+                                Error(
+                                    ParserFuncMissingArgs,
+                                    "VALUE"
+                                );
                                 break;
                             }
-                            if (reduceParserFunc.ParserFunc is ParserFuncs.Identity)
-                                creation = $"""
-                                    return CreateValue<{new FullType(nttype)}>(
-                                        ({nonTerminalFT}){value},
-                                        ({val})
-                                    );
-                                    """;
-                            else if (reduceParserFunc.ParserFunc is ParserFuncs.SingleList)
-                                creation = $"""
-                                    return CreateValue<{new FullType(nttype)}>(
-                                        ({nonTerminalFT}){value},
-                                        [({val})]
-                                    );
-                                    """;
-                            else
-                                throw new NotImplementedException();
                             break;
                         case ParserFuncs.EmptyList:
                             foreach (var (idx, ele) in eles.WithIndex())
@@ -450,19 +514,19 @@ partial class ParserGenerator : AttributeBaseGenerator<ParserAttribute, ParserGe
                                 if (ele.AsArg is null) continue;
                                 if (ele.AsArg is ParserFuncsArgument pfa)
                                 {
-                                    //Error(
-                                    //    ParserFuncInvalidArgs,
-                                    //    pfa.ArgName.ToString(),
-                                    //    "no argument"
-                                    //);
+                                    Error(
+                                        ParserFuncInvalidArgs,
+                                        pfa.ArgName.ToString(),
+                                        "no argument"
+                                    );
                                 }
                                 else if (ele.AsArg is StringArgument s)
                                 {
-                                    //Error(
-                                    //    ParserFuncInvalidArgs,
-                                    //    s.ArgName,
-                                    //    "no argument"
-                                    //);
+                                    Error(
+                                        ParserFuncInvalidArgs,
+                                        s.ArgName,
+                                        "no argument"
+                                    );
                                 }
                                 else
                                 {
@@ -475,29 +539,23 @@ partial class ParserGenerator : AttributeBaseGenerator<ParserAttribute, ParserGe
                                 {
                                     if (pfa.ArgName is not ParserFuncArgs.Value)
                                     {
-                                        //Error(
-                                        //    ParserFuncInvalidArgs,
-                                        //    pfa.ArgName.ToString(),
-                                        //    "no argument"
-                                        //);
+                                        Error(
+                                            ParserFuncInvalidArgs,
+                                            pfa.ArgName.ToString(),
+                                            "no argument"
+                                        );
                                         continue;
                                     }
                                 }
                                 else if (opt.ArgumentName is StringArgument s)
                                 {
-                                    //Error(
-                                    //    ParserFuncInvalidArgs,
-                                    //    s.ArgName,
-                                    //    "no argument"
-                                    //);
+                                    Error(
+                                        ParserFuncInvalidArgs,
+                                        s.ArgName,
+                                        "no argument"
+                                    );
                                 }
                             }
-                            creation = $"""
-                                return CreateValue<{new FullType(nttype)}>(
-                                    ({nonTerminalFT}){value},
-                                    []
-                                );
-                                """;
                             break;
                         case ParserFuncs.AppendList:
                             foreach (var (idx, ele) in eles.WithIndex())
@@ -507,11 +565,11 @@ partial class ParserGenerator : AttributeBaseGenerator<ParserAttribute, ParserGe
                                 {
                                     if (pfa.ArgName is not (ParserFuncArgs.Value or ParserFuncArgs.List))
                                     {
-                                        //Error(
-                                        //    ParserFuncInvalidArgs,
-                                        //    pfa.ArgName.ToString(),
-                                        //    "VALUE or LIST"
-                                        //);
+                                        Error(
+                                            ParserFuncInvalidArgs,
+                                            pfa.ArgName.ToString(),
+                                            "VALUE or LIST"
+                                        );
                                         continue;
                                     }
                                     var type = (ele.Raw.IsTerminal ? TerminalTypes : NonTerminalTypes)[ele.Raw.RawEnum];
@@ -525,10 +583,10 @@ partial class ParserGenerator : AttributeBaseGenerator<ParserAttribute, ParserGe
                                             }
                                             else
                                             {
-                                                //Error(
-                                                //    ParserFuncDuplicateArgs,
-                                                //    pfa.ArgName
-                                                //);
+                                                Error(
+                                                    ParserFuncDuplicateArgs,
+                                                    pfa.ArgName
+                                                );
                                             }
                                         }
                                         else if (pfa.ArgName is ParserFuncArgs.List)
@@ -539,30 +597,30 @@ partial class ParserGenerator : AttributeBaseGenerator<ParserAttribute, ParserGe
                                             }
                                             else
                                             {
-                                                //Error(
-                                                //    ParserFuncDuplicateArgs,
-                                                //    pfa.ArgName
-                                                //);
+                                                Error(
+                                                    ParserFuncDuplicateArgs,
+                                                    pfa.ArgName
+                                                );
                                             }
                                         }
                                     }
                                     else
                                     {
-                                        //Error(
-                                        //    ParserRuleNoTypeParam,
-                                        //    $"({(ele.Raw.IsTerminal ? "Terminal" : "NonTerminal")}){ele.Raw.RawEnum}",
-                                        //    pfa.ArgName.ToString()
-                                        //);
+                                        Error(
+                                            ParserRuleNoTypeParam,
+                                            $"({(ele.Raw.IsTerminal ? "Terminal" : "NonTerminal")}){ele.Raw.RawEnum}",
+                                            pfa.ArgName.ToString()
+                                        );
                                         val = $"/* the given token does not have a type */ default";
                                     }
                                 }
                                 else if (ele.AsArg is StringArgument s)
                                 {
-                                    //Error(
-                                    //    ParserFuncInvalidArgs,
-                                    //    s.ArgName,
-                                    //    reduceParserFunc.ParserFunc.ToString()
-                                    //);
+                                    Error(
+                                        ParserFuncInvalidArgs,
+                                        s.ArgName,
+                                        reduceParserFunc.ParserFunc.ToString()
+                                    );
                                 }
                                 else
                                 {
@@ -575,11 +633,11 @@ partial class ParserGenerator : AttributeBaseGenerator<ParserAttribute, ParserGe
                                 {
                                     if (pfa.ArgName is not (ParserFuncArgs.Value or ParserFuncArgs.List))
                                     {
-                                        //Error(
-                                        //    ParserFuncInvalidArgs,
-                                        //    pfa.ArgName.ToString(),
-                                        //    "VALUE or LIST"
-                                        //);
+                                        Error(
+                                            ParserFuncInvalidArgs,
+                                            pfa.ArgName.ToString(),
+                                            "VALUE or LIST"
+                                        );
                                         continue;
                                     }
                                     if (pfa.ArgName is ParserFuncArgs.Value)
@@ -588,10 +646,10 @@ partial class ParserGenerator : AttributeBaseGenerator<ParserAttribute, ParserGe
                                             val = ConstantParameterToString(opt);
                                         else
                                         {
-                                            //Error(
-                                            //    ParserFuncDuplicateArgs,
-                                            //    pfa.ArgName.ToString()
-                                            //);
+                                            Error(
+                                                ParserFuncDuplicateArgs,
+                                                pfa.ArgName.ToString()
+                                            );
                                         }
                                     }
                                     else if (pfa.ArgName is ParserFuncArgs.List)
@@ -600,10 +658,10 @@ partial class ParserGenerator : AttributeBaseGenerator<ParserAttribute, ParserGe
                                             list = ConstantParameterToString(opt);
                                         else
                                         {
-                                            //Error(
-                                            //    ParserFuncDuplicateArgs,
-                                            //    pfa.ArgName.ToString()
-                                            //);
+                                            Error(
+                                                ParserFuncDuplicateArgs,
+                                                pfa.ArgName.ToString()
+                                            );
                                         }
                                     }
                                     else
@@ -613,40 +671,29 @@ partial class ParserGenerator : AttributeBaseGenerator<ParserAttribute, ParserGe
                                 }
                                 else if (opt.ArgumentName is StringArgument s)
                                 {
-                                    //Error(
-                                    //    ParserFuncInvalidArgs,
-                                    //    s.ArgName,
-                                    //    "VALUE or LIST"
-                                    //);
+                                    Error(
+                                        ParserFuncInvalidArgs,
+                                        s.ArgName,
+                                        "VALUE or LIST"
+                                    );
                                 }
                             }
                             if (val is null)
                             {
-                                //Error(
-                                //    ParserFuncMissingArgs,
-                                //    "VALUE"
-                                //);
-                                creation = "return default;";
+                                Error(
+                                    ParserFuncMissingArgs,
+                                    "VALUE"
+                                );
                                 break;
                             }
                             if (list is null)
                             {
-                                //Error(
-                                //    ParserFuncMissingArgs,
-                                //    "LIST"
-                                //);
-                                creation = "return default;";
+                                Error(
+                                    ParserFuncMissingArgs,
+                                    "LIST"
+                                );
                                 break;
                             }
-                            const string listName = "listlocalvaRiABlEmAKeThEnamesocrAzYThaTNOconFlicT";
-                            creation = $"""
-                                var {listName} = {list};
-                                {listName}.Add({val});
-                                return CreateValue<{new FullType(nttype)}>(
-                                    ({nonTerminalFT}){value},
-                                    {listName}
-                                );
-                                """;
                             break;
                         default:
                             throw new NotImplementedException();
@@ -656,64 +703,11 @@ partial class ParserGenerator : AttributeBaseGenerator<ParserAttribute, ParserGe
                 {
                     throw new NotImplementedException();
                 }
-                sb.AppendLine($$"""
-                    CreateRule(
-                        // NonTerminal.{{nt.Name}}
-                        ({{nonTerminalFT}}){{value}},
-                        [
-                            {{string.Join("\n",
-                                from ele in eles
-                                select $"""
-                                    // {(ele.Raw.IsTerminal ? "Terminal" : "NonTerminal")}.???
-                                    Syntax(({(ele.Raw.IsTerminal ? terminalFT : nonTerminalFT)}){ele.Raw.RawEnum}),
-                                    """
-                            ).IndentWOF(2)}}
-                        ],
-                        x => {
-                            {{(
-                                creation
-                            ).IndentWOF(2)}}
-                        },
-                        Precedence: {{(ruleprec is null ? "null" : $"({terminalFT}){ruleprec}")}}
-                    ),
-                    """);
             }
         }
-        StringBuilder precedenceSB = new();
-        foreach (var precedence in precedenceList)
-        {
-            precedenceSB.AppendLine(
-                $"""
-                ([
-                    {string.Join(
-                        ",\n",
-                        from term in precedence.RawEnumTerminals
-                        select $"Syntax(({terminalFT}){term})").IndentWOF(1)}
-                ], {FullType.Of<Associativity>()}.{precedence.Associativity}),
-                """
-            );
-        }
-
-        yield return $$"""
-            protected override {{FullType.Of<ILRParserDFA>()}} GenerateDFA()
-            {
-                return new {{FullType.Of<LRParserDFAGen>()}}({{FullType.Of<EqualityComparer<INonTerminal>>()}}.Default, {{FullType.Of<EqualityComparer<ITerminal>>()}}.Default).CreateDFA(
-                    [
-                        {{sb.ToString().IndentWOF(3)}}
-                    ],
-                    Syntax(({{nonTerminalFT}}){{args.AttributeDatas[0].Wrapper.startNode}}),
-                    [
-                        // precedence
-                        {{precedenceSB.ToString().IndentWOF(3)}}
-                    ]
-                );
-            }
-            """;
     }
     protected override ParserAttributeWarpper? TransformAttribute(AttributeData attributeData, Compilation compilation)
     {
         return AttributeDataToParserAttribute(attributeData, compilation);
     }
 }
-// just for sake of being able to use AddAttributeConverter
-enum TempType : byte { }

@@ -1,16 +1,84 @@
 ﻿#pragma warning disable IDE0240
 #nullable enable
 #pragma warning restore IDE0240
-using System;
-using System.Collections.Generic;
-using System.Diagnostics;
-using System.Linq;
-using System.Threading;
 using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
+using Microsoft.CodeAnalysis.Diagnostics;
 
 namespace Get.EasyCSharp.GeneratorTools;
+abstract class AttributeBaseAnalyzer<TAttribute1, TAttributeDataType1, TSyntaxNode, TSymbol>(SyntaxKind syntaxKind) : DiagnosticAnalyzer
+    // The User-Defined Attribute Type to process
+    where TAttribute1 : Attribute
+    // TAttributeDataType1: The Attribute Type to be used for AttributeData to custom struct
+    // The SyntaxNode type to process
+    where TSyntaxNode : MemberDeclarationSyntax
+    // The Symbol type to process
+    where TSymbol : ISymbol
+{
+    protected virtual bool CountAttributeSubclass => true;
+    static readonly string FullAttributeName;
+    static AttributeBaseAnalyzer()
+    {
+        var fn = typeof(TAttribute1).FullName;
+        //var idx = fn.IndexOf('`');
+        //if (idx != -1) // generic type, we ignore all generic variable
+        //    FullAttributeName = fn[..idx];
+        //else
+        FullAttributeName = fn;
+    }
 
+    protected virtual void OnInitialize(IncrementalGeneratorPostInitializationContext context) { }
+    public override void Initialize(AnalysisContext context)
+    {
+        context.EnableConcurrentExecution();
+        context.ConfigureGeneratedCodeAnalysis(GeneratedCodeAnalysisFlags.Analyze | GeneratedCodeAnalysisFlags.ReportDiagnostics);
+        context.RegisterSyntaxNodeAction((genContext) =>
+        {
+#if DEBUG
+            //System.Diagnostics.Debugger.Launch();
+            DateTime TransformBegin = DateTime.Now;
+#endif
+            var syntaxNode = (TSyntaxNode)genContext.Node;
+            // Filter out everything which has no attribute
+            if (syntaxNode.AttributeLists.Count is 0) return;
+
+            // Get Symbol
+            var symbols = GetSymbols(genContext, syntaxNode).ToArray();
+            if (symbols.Length is 0) return;
+
+            // Get Attributes
+            var Class = genContext.SemanticModel.Compilation.GetTypeByMetadataName(FullAttributeName);
+            var attributes = (
+                from x in symbols[0].GetAttributes()
+                where CountAttributeSubclass ?
+                    x.AttributeClass?.IsSubclassFrom(Class) ?? false :
+                    x.AttributeClass?.IsTheSameAs(Class) ?? false
+                select (RealAttr: x, WrapperAttr: TransformAttribute(x, genContext.SemanticModel.Compilation))
+            ).Where(x => x.RealAttr is not null && x.WrapperAttr is not null).ToArray();
+            if (attributes.Length is 0) return;
+            foreach (var symbol in symbols)
+                OnPointVisit(new(genContext, syntaxNode, symbol, attributes, CancellationToken.None));
+        }, syntaxKind);
+    }
+    protected abstract TAttributeDataType1? TransformAttribute(AttributeData attributeData, Compilation compilation);
+    protected abstract void OnPointVisit(OnPointVisitArguments args);
+    protected readonly record struct OnPointVisitArguments(
+        SyntaxNodeAnalysisContext Context,
+        TSyntaxNode SyntaxNode,
+        TSymbol Symbol,
+        (AttributeData Original, TAttributeDataType1 Wrapper)[] AttributeDatas,
+        CancellationToken CancellationToken
+    )
+    {
+        public void ReportDiagnostic(Diagnostic diagnostic)
+            => Context.ReportDiagnostic(diagnostic);
+    }
+    protected virtual IEnumerable<TSymbol> GetSymbols(SyntaxNodeAnalysisContext genContext, TSyntaxNode syntaxNode)
+    {
+        if (genContext.SemanticModel.GetDeclaredSymbol(syntaxNode) is TSymbol symbol) yield return symbol;
+    }
+}
 abstract class AttributeBaseGenerator<TAttribute1, TAttributeDataType1, TSyntaxNode, TSymbol> : IIncrementalGenerator
     // The User-Defined Attribute Type to process
     where TAttribute1 : Attribute
@@ -122,7 +190,7 @@ abstract class AttributeBaseGenerator<TAttribute1, TAttributeDataType1, TSyntaxN
         TimeSpan EntireProcess = ProcessCompleted - TransformBegin;
         TimeSpan SubProcess = ProcessCompleted - BeforeProcess;
 #endif
-        return ($"{string.Join(" ", from x in symbols select x.ToString().Replace('<','[').Replace('>', ']'))}.g.cs",
+        return ($"{string.Join(" ", from x in symbols select x.ToString().Replace('<', '[').Replace('>', ']'))}.g.cs",
 #if DEBUG
             $"""
             // This Generator took {EntireProcess.TotalMilliseconds}ms ({EntireProcess.Ticks} ticks) in total
@@ -136,11 +204,11 @@ abstract class AttributeBaseGenerator<TAttribute1, TAttributeDataType1, TSyntaxN
             namespace {{containingClass.ContainingNamespace}}
             {
                 partial {{containingClass.TypeKind switch
-                {
-                    TypeKind.Interface => "interface",
-                    TypeKind.Struct => "struct",
-                    TypeKind.Class or _ => "class",
-                }}} {{classHeader}}
+            {
+                TypeKind.Interface => "interface",
+                TypeKind.Struct => "struct",
+                TypeKind.Class or _ => "class",
+            }}} {{classHeader}}
                 {
                     {{
                     // Original

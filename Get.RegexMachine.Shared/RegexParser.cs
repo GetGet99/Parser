@@ -128,7 +128,17 @@ partial class RegexParser : ParserBase<RegexParser.Terminal, RegexParser.NonTerm
         [Type<char>]
         CloseSquareBracket,
         [Type<char>]
+        OpenCuryBracket,
+        [Type<char>]
+        CloseCuryBracket,
+        [Type<char>]
         Alternation,
+        [Type<char>]
+        QuestionMark,
+        [Type<char>]
+        Equal,
+        [Type<char>]
+        ExclaimationMark,
         [Type<char>]
         Star,
         [Type<char>]
@@ -191,6 +201,7 @@ partial class RegexParser : ParserBase<RegexParser.Terminal, RegexParser.NonTerm
         [Rule(Other, AS, "val", nameof(Identity))]
         [Rule(SingleQuote, AS, "val", nameof(Identity))]
         [Rule(DoubleQuote, AS, "val", nameof(Identity))]
+        [Rule(ExclaimationMark, AS, "val", nameof(Identity))]
         [Rule(NormalCharOrSpecialEscape, AS, "val", nameof(Identity))]
         [Rule(Backslash, NormalCharOrSpecialEscape, AS, "val", nameof(SpecialEscapeNCSE))]
         // other escape characters
@@ -198,6 +209,8 @@ partial class RegexParser : ParserBase<RegexParser.Terminal, RegexParser.NonTerm
         [Rule(Backslash, CloseBracket, AS, "val", nameof(Identity))]
         [Rule(Backslash, OpenSquareBracket, AS, "val", nameof(Identity))]
         [Rule(Backslash, CloseSquareBracket, AS, "val", nameof(Identity))]
+        [Rule(Backslash, OpenCuryBracket, AS, "val", nameof(Identity))]
+        [Rule(Backslash, CloseCuryBracket, AS, "val", nameof(Identity))]
         [Rule(Backslash, Alternation, AS, "val", nameof(Identity))]
         [Rule(Backslash, Star, AS, "val", nameof(Identity))]
         [Rule(Backslash, Plus, AS, "val", nameof(Identity))]
@@ -208,6 +221,10 @@ partial class RegexParser : ParserBase<RegexParser.Terminal, RegexParser.NonTerm
         [Rule(Backslash, Dot, AS, "val", nameof(Identity))]
         [Rule(Backslash, DollarSign, AS, "val", nameof(Identity))]
         [Rule(Backslash, Dash, AS, "val", nameof(Identity))]
+        [Rule(Backslash, QuestionMark, AS, "val", nameof(Identity))]
+        [Rule(Backslash, ExclaimationMark, AS, "val", nameof(Identity))]
+        [Rule(Backslash, Equal, AS, "val", nameof(Identity))]
+        [Rule(Equal, AS, "val", nameof(Identity))]
         Character,
         [Type<IEnumerable<char>>]
         [Rule(Character, AS, "a", nameof(SingleCharSet))]
@@ -232,7 +249,12 @@ partial class RegexParser : ParserBase<RegexParser.Terminal, RegexParser.NonTerm
                 ')' => CloseBracket,
                 '[' => OpenSquareBracket,
                 ']' => CloseSquareBracket,
+                '{' => OpenCuryBracket,
+                '}' => CloseCuryBracket,
                 '|' => Alternation,
+                '?' => QuestionMark,
+                '=' => Equal,
+                '!' => ExclaimationMark,
                 '*' => Star,
                 '+' => Plus,
                 '^' => Caret,

@@ -69,7 +69,7 @@ class RuleAttrSyntaxParser : ParserBase<RuleAttrSyntaxParser.Terminal, RuleAttrS
                 Syntax(NonTerminal.FuncArg),
                 Syntax(NonTerminal.Constant)
             ], x => CreateValue(NonTerminal.ConstArg, new Option(
-                GetValue<Argument>(x[1]), GetValue<object?>(x[2])
+                GetValue<Argument>(x[1]), GetValue<TypedConstantValue>(x[2])
             ))),
             CreateRule(NonTerminal.FuncArg, [
                 Syntax(Terminal.String)
@@ -112,7 +112,7 @@ class RuleAttrSyntaxParser : ParserBase<RuleAttrSyntaxParser.Terminal, RuleAttrS
                 select CreateRule(
                     NonTerminal.Constant, [
                         Syntax(term)
-                    ], x => CreateValue(NonTerminal.Constant, GetValue<object?>(x[0]))
+                    ], x => CreateValue(NonTerminal.Constant, GetValue<TypedConstantValue>(x[0]))
                 ),
         ];
         var dfa = gen.CreateDFA(rules, Syntax(NonTerminal.Rule), []);
@@ -136,11 +136,11 @@ class RuleAttrSyntaxParser : ParserBase<RuleAttrSyntaxParser.Terminal, RuleAttrS
                                 yield return CreateValue(Terminal.String, str);
                                 continue;
                             case var unknown:
-                                yield return CreateValue(Terminal.Unknown, unknown);
+                                yield return CreateValue<TypedConstantValue>(Terminal.Unknown, new(parameter.Type, unknown));
                                 continue;
                         }
                     case TypedConstantKind.Error:
-                        yield return CreateValue<object?>(Terminal.Unknown, null);
+                        yield return CreateValue<TypedConstantValue>(Terminal.Unknown, new(parameter.Type, null));
                         continue;
                     case TypedConstantKind.Enum:
                         if (parameter.Type!.Equals(terminalType, SymbolEqualityComparer.Default))
@@ -148,7 +148,8 @@ class RuleAttrSyntaxParser : ParserBase<RuleAttrSyntaxParser.Terminal, RuleAttrS
                         else if (parameter.Type!.Equals(nonTerminalType, SymbolEqualityComparer.Default))
                             yield return CreateValue(Terminal.NonTerminal, parameter.Value ?? throw new NullReferenceException());
                         else if (parameter.Type!.Equals(keywordType, SymbolEqualityComparer.Default))
-                            switch ((byte)(parameter.Value ?? throw new NullReferenceException())) {
+                            switch ((byte)(parameter.Value ?? throw new NullReferenceException()))
+                            {
                                 case (byte)ParserSourceGeneratorKeywords.As:
                                     yield return CreateValue(Terminal.As);
                                     continue;
@@ -177,14 +178,14 @@ class RuleAttrSyntaxParser : ParserBase<RuleAttrSyntaxParser.Terminal, RuleAttrS
                                     yield return CreateValue(Terminal.ParserFuncArg, ParserFuncArgs.Value);
                                     continue;
                                 default:
-                                    yield return CreateValue<object?>(Terminal.Unknown, parameter.Value);
+                                    yield return CreateValue<TypedConstantValue>(Terminal.Unknown, new(parameter.Type, parameter.Value));
                                     continue;
                             }
                         else
-                            yield return CreateValue(Terminal.Unknown, parameter.Value);
+                            yield return CreateValue<TypedConstantValue>(Terminal.Unknown, new(parameter.Type, parameter.Value));
                         continue;
                     case TypedConstantKind.Array:
-                        yield return CreateValue<object?>(Terminal.Unknown, parameter.Values);
+                        yield return CreateValue<TypedConstantValue>(Terminal.Unknown, new(parameter.Type, parameter.Values));
                         continue;
                 }
             }
@@ -197,7 +198,8 @@ class RuleAttrSyntaxParser : ParserBase<RuleAttrSyntaxParser.Terminal, RuleAttrS
     }
     static Func<ISyntaxElementValue[], INonTerminalValue> CreateAppendListHandler<T>(NonTerminal nonTerminal, int listIdx, int eleIdx)
     {
-        return x => {
+        return x =>
+        {
             var list = GetValue<List<T>>(x[listIdx]);
             list.Add(GetValue<T>(x[eleIdx]));
             return CreateValue(nonTerminal, list);
@@ -225,7 +227,8 @@ public record Raw(object RawEnum, bool IsTerminal)
         return $"{(IsTerminal ? "Terminal" : "NonTerminal")}.{RawEnum}";
     }
 }
-public record Option(Argument ArgumentName, object? ConstantParameterValue)
+public record TypedConstantValue(ITypeSymbol? Type, object? ConstantParameterValue);
+public record Option(Argument ArgumentName, TypedConstantValue ConstantParameterValue)
 {
     public override string ToString()
     {

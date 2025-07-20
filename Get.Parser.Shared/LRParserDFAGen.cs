@@ -1,8 +1,5 @@
-﻿using Get.PLShared;
-using System.Collections.Generic;
-using System.Data;
-using System.Diagnostics;
-using System.Diagnostics.CodeAnalysis;
+﻿using System.Diagnostics.CodeAnalysis;
+using System.Linq;
 
 namespace Get.Parser;
 public enum Associativity { Left, Right, NonAssociative }
@@ -99,35 +96,104 @@ public class LRParserDFAGen(IEqualityComparer<INonTerminal> nontermComparer, IEq
                 // no reductions
                 continue;
             }
-            else if (possibleReductions.Count is 1)
+            //else if (possibleReductions.Count is 1)
+            //{
+            //    foreach (var term in possibleReductions[0].ReduceOn)
+            //    {
+            //        if (term is not null)
+            //        {
+            //            if (currentDFA.Actions.ContainsKey(term))
+            //            {
+            //                throw new LRConflictException()
+            //                {
+            //                    // TO DO: specify the other action that is conflict from currentDFA.Actions
+            //                    ConflictedItems = [possibleReductions[0]],
+            //                    ConflictType = ConflictType.ReduceReduce
+            //                };
+            //            }
+            //            currentDFA.Actions[term] = new LRDFAReduce(possibleReductions[0].OriginalCFGRule);
+            //            ShiftReduceConflictCheck(currentDFA, term, precedenceList);
+            //        }
+            //        else
+            //            currentDFA.OnEndSymbol = new LRDFAReduce(possibleReductions[0].OriginalCFGRule);
+            //    }
+            //}
+            //else
+            //{
+            //    throw new LRConflictException()
+            //    {
+            //        ConflictedItems = possibleReductions,
+            //        ConflictType = ConflictType.ReduceReduce
+            //    };
+            //}
+            // Combine all reduce-on lookahead symbols across items
+            var lookaheadToItem = new Dictionary<ITerminal?, LRItem>();
+            LRItem? eofReductionItem = null;
+
+            foreach (var item in possibleReductions)
             {
-                foreach (var term in possibleReductions[0].ReduceOn)
+                foreach (var lookahead in item.ReduceOn)
                 {
-                    if (term is not null)
+                    if (lookahead is null)
                     {
-                        if (currentDFA.Actions.ContainsKey(term))
+                        if (eofReductionItem is not null)
                         {
-                            throw new LRConflictException()
+                            // Conflict on end-of-input (null lookahead)
+                            throw new LRReduceReduceConflictException
                             {
-                                // TO DO: specify the other action that is conflict from currentDFA.Actions
-                                ConflictedItems = [possibleReductions[0]],
-                                ConflictType = ConflictType.ReduceReduce
+                                ReducingTerminal = null,
+                                CurrentDFANode = currentDFA,
+                                //ConflictedItems = [eofReductionItem.Value, item]
                             };
                         }
-                        currentDFA.Actions[term] = new LRDFAReduce(possibleReductions[0].OriginalCFGRule);
-                        ShiftReduceConflictCheck(currentDFA, term, precedenceList);
+
+                        eofReductionItem = item;
                     }
                     else
-                        currentDFA.OnEndSymbol = new LRDFAReduce(possibleReductions[0].OriginalCFGRule);
+                    {
+                        if (lookaheadToItem.TryGetValue(lookahead, out var otherItem))
+                        {
+                            // Conflict! Two reductions on the same lookahead
+                            throw new LRReduceReduceConflictException()
+                            {
+                                ReducingTerminal = lookahead,
+                                CurrentDFANode = currentDFA,
+                                //ConflictedItems = [item, otherItem],
+                            };
+                        }
+                        else
+                        {
+                            lookaheadToItem[lookahead] = item;
+                        }
+                    }
                 }
             }
-            else
+
+            // No conflicts — we can safely add reduce actions
+            foreach (var (lookahead, item) in lookaheadToItem)
             {
-                throw new LRConflictException()
+                if (lookahead is not null)
                 {
-                    ConflictedItems = possibleReductions,
-                    ConflictType = ConflictType.ReduceReduce
-                };
+                    if (currentDFA.Actions.ContainsKey(lookahead))
+                    {
+                        throw new LRReduceReduceConflictException()
+                        {
+                            ReducingTerminal = lookahead,
+                            CurrentDFANode = currentDFA,
+                            //ConflictedItems = [item]
+                        };
+                    }
+                    currentDFA.Actions[lookahead] = new LRDFAReduce(item.OriginalCFGRule);
+                    ShiftReduceConflictCheck(currentDFA, lookahead, precedenceList);
+                }
+                else
+                {
+                    currentDFA.OnEndSymbol = new LRDFAReduce(item.OriginalCFGRule);
+                }
+            }
+            if (eofReductionItem is not null)
+            {
+                currentDFA.OnEndSymbol = new LRDFAReduce(eofReductionItem.Value.OriginalCFGRule);
             }
         }
 
@@ -137,11 +203,10 @@ public class LRParserDFAGen(IEqualityComparer<INonTerminal> nontermComparer, IEq
             initialState.NextDFANode[startNode] = acceptDFANode = new(nontermComparer, termComparer) { Items = [/* not used */] };
         }
         if (acceptDFANode.OnEndSymbol is not null)
-            throw new LRConflictException()
+            throw new LRReduceReduceConflictException()
             {
-                // TO DO: Specify Conflicted Items
-                ConflictedItems = [],
-                ConflictType = ConflictType.ReduceReduce
+                CurrentDFANode = acceptDFANode,
+                ReducingTerminal = null
             };
         acceptDFANode.OnEndSymbol = new ILRDFAAccept();
 
@@ -180,11 +245,12 @@ public class LRParserDFAGen(IEqualityComparer<INonTerminal> nontermComparer, IEq
 
             if (termPrecedence < 0 && rulePrecedence < 0)
                 // probably unintentional conflict as precedence is not declared
-                throw new LRConflictException()
+                throw new LRShiftReduceConflictException()
                 {
+                    CurrentDFANode = currentDFA,
+                    ReducingTerminal = term,
                     // TO DO: specify the other action that is conflict from currentDFA.Actions
-                    ConflictedItems = [], // possibleReductions[0]
-                    ConflictType = ConflictType.ShiftReduce
+                    //ConflictedItems = [], // possibleReductions[0]
                 };
             var assoc = precedenceList[termPrecedence < 0 ? rulePrecedence : termPrecedence].Associativity;
             // so because we want the rule defined earlier to be seen as higher precedence
@@ -210,11 +276,12 @@ public class LRParserDFAGen(IEqualityComparer<INonTerminal> nontermComparer, IEq
                 }
                 if (assoc is Associativity.NonAssociative)
                 {
-                    throw new LRConflictException()
+                    throw new LRShiftReduceConflictException()
                     {
+                        CurrentDFANode = currentDFA,
+                        ReducingTerminal = term,
                         // TO DO: specify the other action that is conflict from currentDFA.Actions
-                        ConflictedItems = [], // possibleReductions[0]
-                        ConflictType = ConflictType.ShiftReduce
+                        //ConflictedItems = [], // possibleReductions[0]
                     };
                 }
             }
@@ -434,7 +501,8 @@ public readonly record struct LRItem(ICFGRule OriginalCFGRule, int DotIndex, ITe
         return hash;
     }
 }
-public sealed class ErrorTerminal : ITerminal {
+public sealed class ErrorTerminal : ITerminal
+{
     public static ITerminal Singleton { get; } = new ErrorTerminal();
     private ErrorTerminal() { }
 }
@@ -487,10 +555,75 @@ public enum ConflictType
     ShiftReduce,
     ReduceReduce
 }
-public class LRConflictException() : Exception("An unresolved conflict was found")
+public abstract class LRConflictException : Exception
 {
-    public required ConflictType ConflictType { get; init; }
-    public required IReadOnlyList<LRItem> ConflictedItems { get; init; }
+    public abstract ConflictType ConflictType { get; }
+    public required ILRParserDFA CurrentDFANode { get; init; }
+    //public required IReadOnlyList<LRItem> ConflictedItems { get; init; }
+    public required ITerminal? ReducingTerminal { get; init; }
+    LRItem[]? _ConflictedItems;
+    public IEnumerable<LRItem> ConflictedItems
+    {
+        get
+        {
+            if (_ConflictedItems is not null) return _ConflictedItems;
+            if (CurrentDFANode is not LRParserDFA dfa)
+                throw new NotSupportedException("Only internal DFA is supported");
+
+            bool IsApplicable(LRItem item)
+            {
+                if (ConflictType == ConflictType.ShiftReduce)
+                {
+                    if (item.ExpressionAfter.Count > 1)
+                    {
+                        if (Equals(item.ExpressionAfter[0], ReducingTerminal))
+                        {
+                            // shifting with given terminal
+                            return true;
+                        }
+                    }
+                }
+                foreach (var red in item.ReduceOn)
+                {
+                    if (Equals(red, ReducingTerminal))
+                    {
+                        // reducing with given terminal
+                        return true;
+                    }
+                }
+                return false;
+            }
+            _ConflictedItems = [..from item in dfa.Items where IsApplicable(item) select item];
+            return _ConflictedItems;
+        }
+    }
+    public override string Message
+    {
+        get
+        {
+            var a = $"{(ConflictType == ConflictType.ShiftReduce ? "Shift-Reduce" : "Reduce-Reduce")} conflict is found on terminal {(ReducingTerminal is null ? "<END>" : ReducingTerminal)}.";
+            if (CurrentDFANode is LRParserDFA dfa)
+            {
+                a += "\n\nConflicting Items\n\n";
+
+                a += string.Join("\n", ConflictedItems);
+
+                a += "\n\nItems\n\n";
+
+                a += string.Join("\n", dfa.Items);
+                return a;
+            }
+            return a;
+        }
+    }
+}
+public class LRShiftReduceConflictException : LRConflictException
+{
+    public override ConflictType ConflictType => ConflictType.ShiftReduce;
+}
+public class LRReduceReduceConflictException : LRConflictException
+{
+    public override ConflictType ConflictType => ConflictType.ReduceReduce;
 }
 
 // Code Generated by ChatGPT

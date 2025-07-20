@@ -39,6 +39,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "LangSupport", "LangSupport"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Get.LangSupport.Test", "Get.LangSupport.Test\Get.LangSupport.Test.csproj", "{0D47D7BD-D4C5-4CC3-9D7C-FE344B8C4140}"
 EndProject
+Project("{D954291E-2A0B-460D-934E-DC6B0785DB48}") = "Get.RegexMachine.Shared", "Get.RegexMachine.Shared\Get.RegexMachine.Shared.shproj", "{5E49BCA9-CAEE-495B-BB99-EA8D4CEAE057}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -110,16 +112,21 @@ Global
 		{28371812-FE7D-4F20-8469-0CCD32AA382C} = {BECD41F3-6CE8-4272-9190-E4F3B9F342EC}
 		{AD810228-03CE-45CC-B747-CE8D647A3F1E} = {02EA681E-C7D8-13C7-8484-4AC65E1B71E8}
 		{0D47D7BD-D4C5-4CC3-9D7C-FE344B8C4140} = {02EA681E-C7D8-13C7-8484-4AC65E1B71E8}
+		{5E49BCA9-CAEE-495B-BB99-EA8D4CEAE057} = {BECD41F3-6CE8-4272-9190-E4F3B9F342EC}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {8F15FCBA-C960-4000-BFB6-3337C19AB529}
 	EndGlobalSection
 	GlobalSection(SharedMSBuildProjectFiles) = preSolution
+		Get.RegexMachine.Shared\Get.RegexMachine.Shared.projitems*{004b57d5-af4b-4d91-8f95-782bf06ccdbc}*SharedItemsImports = 5
 		Get.Lexer.Shared\Get.Lexer.Shared.projitems*{21ad9d2d-a0ce-47e9-8dca-2e6d94ccd570}*SharedItemsImports = 5
 		Get.Lexer.Shared\Get.Lexer.Shared.projitems*{29dbf0ff-1f4a-4d60-8913-b7ed7b3c9a76}*SharedItemsImports = 5
 		Get.Parser.Shared\Get.Parser.Shared.projitems*{29dbf0ff-1f4a-4d60-8913-b7ed7b3c9a76}*SharedItemsImports = 5
+		Get.RegexMachine.Shared\Get.RegexMachine.Shared.projitems*{5e49bca9-caee-495b-bb99-ea8d4ceae057}*SharedItemsImports = 13
 		Get.Lexer.Shared\Get.Lexer.Shared.projitems*{620ba97d-7c9a-47f0-ae9e-7271f76f1dad}*SharedItemsImports = 13
 		Get.Lexer.Shared\Get.Lexer.Shared.projitems*{68c78669-5431-4c8e-b790-c6dc0260cbb5}*SharedItemsImports = 5
+		Get.Parser.Shared\Get.Parser.Shared.projitems*{68c78669-5431-4c8e-b790-c6dc0260cbb5}*SharedItemsImports = 5
+		Get.RegexMachine.Shared\Get.RegexMachine.Shared.projitems*{68c78669-5431-4c8e-b790-c6dc0260cbb5}*SharedItemsImports = 5
 		Get.Parser.Shared\Get.Parser.Shared.projitems*{71532860-8c79-44e3-ab7a-6aecce3b60dc}*SharedItemsImports = 5
 		Get.Parser.Shared\Get.Parser.Shared.projitems*{9b50ae4d-44b5-4ff8-b2cd-6ab8e432d09d}*SharedItemsImports = 13
 	EndGlobalSection

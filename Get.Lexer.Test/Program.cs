@@ -3,7 +3,7 @@ using Get.Lexer.Test;
 using Get.PLShared;
 using System.Diagnostics;
 using System.Text;
-
+using Terminals = Get.Lexer.Test.CustomLexerSourceGen.Terminals;
 RotatingBuffer.Test();
 StreamSeeker.Test();
 
@@ -14,7 +14,7 @@ var stream = StreamOf("""
     * 2
     - someVariable
     """);
-var lexer = new CustomLexer(stream);
+var lexer = new CustomLexerSourceGen(stream);
 var enumerator = lexer.GetTokens().GetEnumerator();
 enumerator.MoveNext();
 Debug.Assert(enumerator.Current.TokenType == Terminals.Integer);

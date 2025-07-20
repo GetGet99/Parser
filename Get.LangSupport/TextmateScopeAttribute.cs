@@ -42,6 +42,7 @@ public class TextmateScopeAttribute(string scope) : Attribute
 public enum KeywordType
 {
     Control,
+    Modifier,
     Declaration,
     Import,
     Other
@@ -153,10 +154,10 @@ public class TextmateCommentScopeAttribute : TextmateScopeAttribute
     public TextmateCommentScopeAttribute() : base("comment") { }
 }
 
-public class TextmateVariableScopeAttribute : TextmateScopeAttribute
+public class TextmateOtherVariableScopeAttribute : TextmateScopeAttribute
 {
-    public TextmateVariableScopeAttribute(string name = "other.readwrite") : base($"variable.{name}") { }
-    public TextmateVariableScopeAttribute(VariableType type) : this(type.ToString().ToLower()) { }
+    public TextmateOtherVariableScopeAttribute(string name = "readwrite") : base($"variable.other.{name}") { }
+    public TextmateOtherVariableScopeAttribute(VariableType type) : this(type.ToString().ToLower()) { }
 }
 
 public enum OperatorType
@@ -168,13 +169,14 @@ public enum OperatorType
     Increment,
     Decrement,
     Ternary,
+    TypeOf,
     Other
 }
 
-public class TextmateOperatorScopeAttribute : TextmateScopeAttribute
+public class TextmateKeywordOperatorScopeAttribute : TextmateScopeAttribute
 {
-    public TextmateOperatorScopeAttribute(string opType = "arithmetic") : base($"keyword.operator.{opType}") { }
-    public TextmateOperatorScopeAttribute(OperatorType opType) : this(opType.ToString().ToLower()) { }
+    public TextmateKeywordOperatorScopeAttribute(string opType = "arithmetic") : base($"keyword.operator.{opType}") { }
+    public TextmateKeywordOperatorScopeAttribute(OperatorType opType) : this(opType.ToString().ToLower()) { }
 }
 
 public class TextmateEntityNameFunctionScopeAttribute : TextmateScopeAttribute

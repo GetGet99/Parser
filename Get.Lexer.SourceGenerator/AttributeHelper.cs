@@ -14,28 +14,28 @@ namespace Get.EasyCSharp.GeneratorTools;
 delegate TOutput? AttributeTransformer<TOutput>(AttributeData attributeData, Compilation compilation);
 static class AttributeHelper
 {
-    public static IEnumerable<(AttributeData RealAttributeData, TOutput Serialized)> GetAttributes<TAttribute, TOutput>(GeneratorSyntaxContext genContext, ISymbol symbol, AttributeTransformer<TOutput> attributeTransformer, bool allowSubclass = true)
+    public static IEnumerable<(AttributeData RealAttributeData, TOutput Serialized)> GetAttributes<TAttribute, TOutput>(SemanticModel semanticModel, ISymbol symbol, AttributeTransformer<TOutput> attributeTransformer, bool allowSubclass = true)
     {
         // Get Attributes
-        var Class = genContext.SemanticModel.Compilation.GetTypeByMetadataName(typeof(TAttribute).FullName);
+        var Class = semanticModel.Compilation.GetTypeByMetadataName(typeof(TAttribute).FullName);
 
         return (
             from x in symbol.GetAttributes()
             where allowSubclass ?
                 x.AttributeClass?.IsSubclassFrom(Class) ?? false :
                 x.AttributeClass?.IsTheSameAs(Class) ?? false
-            select (RealAttr: x, WrapperAttr: attributeTransformer(x, genContext.SemanticModel.Compilation))
+            select (RealAttr: x, WrapperAttr: attributeTransformer(x, semanticModel.Compilation))
         ).Where(x => x.RealAttr is not null && x.WrapperAttr is not null);
     }
-    public static (AttributeData RealAttributeData, TOutput Serialized)? TryGetAttribute<TAttribute, TOutput>(GeneratorSyntaxContext genContext, ISymbol symbol, AttributeTransformer<TOutput> attributeTransformer, bool allowSubclass = true)
+    public static (AttributeData RealAttributeData, TOutput Serialized)? TryGetAttribute<TAttribute, TOutput>(SemanticModel semanticModel, ISymbol symbol, AttributeTransformer<TOutput> attributeTransformer, bool allowSubclass = true)
     {
-        foreach (var item in GetAttributes<TAttribute, TOutput>(genContext, symbol, attributeTransformer, allowSubclass))
+        foreach (var item in GetAttributes<TAttribute, TOutput>(semanticModel, symbol, attributeTransformer, allowSubclass))
         {
             return item;
         }
         return null;
     }
-    public static IEnumerable<(AttributeData RealAttributeData, TOutput Serialized)> GetAttributesAnyGeneric<TAttribute, TOutput>(GeneratorSyntaxContext genContext, ISymbol symbol, AttributeTransformer<TOutput> attributeTransformer, bool allowSubclass = true)
+    public static IEnumerable<(AttributeData RealAttributeData, TOutput Serialized)> GetAttributesAnyGeneric<TAttribute, TOutput>(SemanticModel semanticModel, ISymbol symbol, AttributeTransformer<TOutput> attributeTransformer, bool allowSubclass = true)
     {
         // Get Attributes
         var attr = typeof(TAttribute);
@@ -46,7 +46,7 @@ static class AttributeHelper
             where allowSubclass ?
                 IsSubclassFromAnyGeneric(x.AttributeClass, attr.Namespace, name) :
                 IsTheSameAsAnyGeneric(x.AttributeClass, attr.Namespace, name)
-            select (RealAttr: x, WrapperAttr: attributeTransformer(x, genContext.SemanticModel.Compilation))
+            select (RealAttr: x, WrapperAttr: attributeTransformer(x, semanticModel.Compilation))
         ).Where(x => x.RealAttr is not null && x.WrapperAttr is not null);
 
         static bool IsSubclassFromAnyGeneric(INamedTypeSymbol? Type, string ns, string PotentialBaseType)
@@ -68,9 +68,9 @@ static class AttributeHelper
             return false;
         }
     }
-    public static (AttributeData RealAttributeData, TOutput Serialized)? TryGetAttributeAnyGeneric<TAttribute, TOutput>(GeneratorSyntaxContext genContext, ISymbol symbol, AttributeTransformer<TOutput> attributeTransformer, bool allowSubclass = true)
+    public static (AttributeData RealAttributeData, TOutput Serialized)? TryGetAttributeAnyGeneric<TAttribute, TOutput>(SemanticModel semanticModel, ISymbol symbol, AttributeTransformer<TOutput> attributeTransformer, bool allowSubclass = true)
     {
-        foreach (var item in GetAttributesAnyGeneric<TAttribute, TOutput>(genContext, symbol, attributeTransformer, allowSubclass))
+        foreach (var item in GetAttributesAnyGeneric<TAttribute, TOutput>(semanticModel, symbol, attributeTransformer, allowSubclass))
         {
             return item;
         }

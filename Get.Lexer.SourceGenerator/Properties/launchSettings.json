@@ -4,9 +4,9 @@
       "commandName": "DebugRoslynComponent",
       "targetProject": "..\\Get.Lexer.Test\\Get.Lexer.Test.csproj"
     },
-    "Source Gen - QuickCode": {
+    "Source Gen - Get.LangMaker": {
       "commandName": "DebugRoslynComponent",
-      "targetProject": "..\\QuickCode\\QuickCode.Parser.csproj"
+      "targetProject": "..\\..\\Get.LangMaker.Parser\\Get.LangMaker.Parser.csproj"
     }
   }
 }

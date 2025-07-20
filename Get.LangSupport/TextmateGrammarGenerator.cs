@@ -64,7 +64,7 @@ public partial class TextmateGrammarMetadata
         """;
     }
 
-    public string GetGrammarJSON(Dictionary<string, object> repository)
+    public string GetGrammarJSON<T>(StringDict<T> repository)
     {
         var grammar = new
         {
@@ -90,7 +90,7 @@ public partial class TextmateGrammarMetadata
 
 public static class TextmateGrammarGenerator
 {
-    public static Dictionary<string, object> GenerateRepository<TLexer>()
+    public static StringDict<StringDict<List<StringDict<object>>>> GenerateRepository<TLexer>()
     {
         var type = typeof(TLexer);
         var lexerAttr = type.GetCustomAttributes()
@@ -104,7 +104,7 @@ public static class TextmateGrammarGenerator
             throw new InvalidDataException("The type in the generic parameter must be an enum.");
 
         // Priority -> List of rules with that priority, preserving order
-        var rulesByPriority = new SortedDictionary<int, List<Dictionary<string, object>>>(Comparer<int>.Create((a, b) => b.CompareTo(a))); // descending order
+        var rulesByPriority = new SortedDictionary<int, List<StringDict<object>>>(Comparer<int>.Create((a, b) => b.CompareTo(a))); // descending order
 
         foreach (var field in terminalType.GetFields(BindingFlags.Public | BindingFlags.Static))
         {
@@ -125,7 +125,7 @@ public static class TextmateGrammarGenerator
                 if (scopeAttr.Begin != null && scopeAttr.End != null)
                 {
                     // begin/end rule (no regexes)
-                    var rule = new Dictionary<string, object>
+                    var rule = new StringDict<object>
                     {
                         ["name"] = scopeAttr.Scope,
                         ["begin"] = scopeAttr.Begin,
@@ -141,7 +141,7 @@ public static class TextmateGrammarGenerator
 
                     if (!rulesByPriority.TryGetValue(scopeAttr.Priority, out var list))
                     {
-                        list = new List<Dictionary<string, object>>();
+                        list = [];
                         rulesByPriority[scopeAttr.Priority] = list;
                     }
                     list.Add(rule);
@@ -151,7 +151,7 @@ public static class TextmateGrammarGenerator
                     // one rule per regex
                     foreach (var regex in regexes)
                     {
-                        var rule = new Dictionary<string, object>
+                        var rule = new StringDict<object>
                         {
                             ["name"] = scopeAttr.Scope,
                             ["match"] = scopeAttr.AddBoundary ? @$"\b{regex}\b" : regex
@@ -159,7 +159,7 @@ public static class TextmateGrammarGenerator
 
                         if (!rulesByPriority.TryGetValue(scopeAttr.Priority, out var list))
                         {
-                            list = new List<Dictionary<string, object>>();
+                            list = [];
                             rulesByPriority[scopeAttr.Priority] = list;
                         }
                         list.Add(rule);
@@ -169,12 +169,12 @@ public static class TextmateGrammarGenerator
         }
 
         // Flatten all rules into a single list ordered by priority descending
-        var allRules = rulesByPriority.Values.SelectMany(rules => rules).ToArray();
+        var allRules = rulesByPriority.Values.SelectMany(rules => rules).ToList();
 
         // Construct repository dictionary with main -> { patterns = [...] }
-        var repository = new Dictionary<string, object>
+        var repository = new StringDict<StringDict<List<StringDict<object>>>>
         {
-            ["main"] = new Dictionary<string, object>
+            ["main"] = new StringDict<List<StringDict<object>>>
             {
                 ["patterns"] = allRules
             }
@@ -183,3 +183,4 @@ public static class TextmateGrammarGenerator
         return repository;
     }
 }
+public class StringDict<T> : Dictionary<string, T> { }

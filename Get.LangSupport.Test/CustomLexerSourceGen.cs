@@ -25,24 +25,24 @@ partial class CustomLexerSourceGen(ITextSeekable text) : LexerBase<
     public enum Terminals
     {
         [Type<int>]
-        [NumericScope(NumericType.Decimal, Regexes = [@"[0-9]+"])]
+        [TextmateConstantNumericScope(NumericType.Decimal, Regexes = [@"[0-9]+"])]
         [Regex<int>(@"[0-9]+", "BuildInt")]
-        [NumericScope(NumericType.Hex, Regexes = ["0x[0-9a-fA-F]+"], Priority = 1)]
+        [TextmateConstantNumericScope(NumericType.Hex, Regexes = ["0x[0-9a-fA-F]+"], Priority = 1)]
         [Regex<int>(@"0x[0-9a-fA-F]+", "BuildHex")]
         Integer,
         [Type<string>]
         [Regex<string>(@"[a-zA-Z_][a-zA-Z_0-9]*", "BuildString")]
-        [VariableScope]
+        [TextmateOtherVariableScope]
         Identifier,
         [Regex(@"\+")]
-        [OperatorScope]
+        [TextmateKeywordOperatorScope]
         Plus,
         [Regex(@"\-")]
-        [OperatorScope]
+        [TextmateKeywordOperatorScope]
         Minus,
         [Regex(@" ")]
         Whitespace,
-        [OperatorScope]
+        [TextmateKeywordOperatorScope]
         [Regex(@"\*")]
         Times
     }

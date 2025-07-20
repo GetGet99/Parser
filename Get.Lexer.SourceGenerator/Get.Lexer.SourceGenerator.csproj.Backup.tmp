@@ -18,7 +18,6 @@
 			<IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
 		</PackageReference>
 		<ProjectReference Include="..\Get.EasyCSharp.GeneratorTools\Get.EasyCSharp.GeneratorTools.csproj" ReferenceOutputAssembly="False" OutputItemType="Analyzer" />
-		<ProjectReference Include="..\Get.Parser.SourceGenerator\Get.Parser.SourceGenerator.csproj" ReferenceOutputAssembly="False" OutputItemType="Analyzer" />
 	</ItemGroup>
 	<Import Project="..\Get.Lexer.Shared\Get.Lexer.Shared.projitems" Label="Shared" />
 	<Import Project="..\Get.RegexMachine.Shared\Get.RegexMachine.Shared.projitems" Label="Shared" />

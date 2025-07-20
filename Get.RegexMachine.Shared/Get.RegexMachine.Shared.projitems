@@ -1,0 +1,24 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <MSBuildAllProjects Condition="'$(MSBuildVersion)' == '' Or '$(MSBuildVersion)' &lt; '16.0'">$(MSBuildAllProjects);$(MSBuildThisFileFullPath)</MSBuildAllProjects>
+    <HasSharedItems>true</HasSharedItems>
+    <SharedGUID>5e49bca9-caee-495b-bb99-ea8d4ceae057</SharedGUID>
+  </PropertyGroup>
+  <PropertyGroup Label="Configuration">
+    <Import_RootNamespace>Get.RegexMachine.Shared</Import_RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="$(MSBuildThisFileDirectory)BacktrackableIterator.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Get.Lexer.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)IBacktrackableIterator.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)ISeekable.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)ITextSeekable.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)RegexCompiler.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)RegexCompiler.DFA.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)RegexCompiler.NFA.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)RegexParser.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)RegexRunner.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)RegexSourceCodeGeneration.cs" />
+  </ItemGroup>
+</Project>
