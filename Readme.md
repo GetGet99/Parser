@@ -25,10 +25,8 @@ The lexer takes an input stream of characters and emits `IEnumerable<IToken>`, o
 
 ### ✅ Usage Options
 
-* **Recommended**: Use the source generator with C# attributes (`CustomLexerSourceGen.cs`) for IntelliSense and diagnostics.
-* **Advanced/manual**: Build lexer rules directly in code (`CustomLexer.cs`). This provides flexibility but **does not support analyzers**.
-
----
+* **Recommended**: Use the source generator with C# attributes (example: `CustomLexerSourceGen.cs`) for IntelliSense and diagnostics.
+* **Advanced/manual**: Build lexer rules directly in code (example: `CustomLexer.cs`). This provides flexibility but **does not support analyzers**.
 
 ## 📚 LR(1) Parser
 
@@ -40,8 +38,8 @@ The parser processes context-free grammar definitions, resolving them using **LR
 
 ### ✅ Usage Options
 
-* **Recommended**: Use the source generator with annotated methods (`TestSourceGenMath.cs`) for full IDE support.
-* **Advanced/manual**: Define grammar rules directly in code (`TestRegex.DFA.cs`, `TestManualRuleAttr.DFA.cs`). This mode skips analyzers.
+* **Recommended**: Use the source generator with annotated methods (example: `TestSourceGenMath.cs`) for full IDE support.
+* **Advanced/manual**: Define grammar rules directly in code (example: `TestRegex.DFA.cs`, `TestManualRuleAttr.DFA.cs`). This mode skips analyzers.
 
 ## 🔍 Analyzers
 
