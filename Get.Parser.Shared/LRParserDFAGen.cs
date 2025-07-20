@@ -583,17 +583,18 @@ public abstract class LRConflictException : Exception
                         }
                     }
                 }
-                foreach (var red in item.ReduceOn)
-                {
-                    if (Equals(red, ReducingTerminal))
+                if (item.ExpressionAfter.Count is 0)
+                    foreach (var red in item.ReduceOn)
                     {
-                        // reducing with given terminal
-                        return true;
+                        if (Equals(red, ReducingTerminal))
+                        {
+                            // reducing with given terminal
+                            return true;
+                        }
                     }
-                }
                 return false;
             }
-            _ConflictedItems = [..from item in dfa.Items where IsApplicable(item) select item];
+            _ConflictedItems = [.. from item in dfa.Items where IsApplicable(item) select item];
             return _ConflictedItems;
         }
     }
