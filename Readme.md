@@ -43,10 +43,31 @@ The parser processes context-free grammar definitions, resolving them using **LR
 
 ## 🔍 Analyzers
 
-Our analyzer tooling surfaces:
+The framework detects lexer and parser conflicts **as you type**, directly inside supported C# IDEs.
 
-* **Lexer conflicts**: Detected when rules overlap or produce ambiguity
-* **Parser conflicts**: Shift/reduce and reduce/reduce issues
-* **Inline diagnostics**: All shown directly in your IDE (e.g., Visual Studio)
+> ⚡ This provides immediate feedback while authoring your grammar — no need to compile or run the program.
 
-> 📌 **Analyzer support is only available when using the attribute-based (source generator) mode.** Manual in-code grammar definitions won’t receive analyzer feedback.
+### What Analyzers Catch
+
+- 🧱 **Lexer conflicts** — e.g., ambiguous or overlapping token patterns
+- 🔄 **Shift/reduce and reduce/reduce parser conflicts**
+- 🧠 **Inline diagnostics** — shown in-editor via IntelliSense squiggles and tooltips
+
+> 📌 Analyzer support is **only available in the attribute-based (source generator) mode**.  
+> Manual in-code grammar does **not** currently support analyzers.
+
+---
+
+### 📸 Analyzer in Action
+
+<p align="center">
+  <img src="assets/SRC.png" alt="Shift Reduce Conflict Example" width="600"/>
+</p>
+
+**Above**: Without precedence, the parser encounters a shift-reduce conflict.
+
+<p align="center">
+  <img src="assets/SRCprecedence.png" alt="Precedence solves shift reduce conflict" width="600"/>
+</p>
+
+**Resolved**: Adding precedence resolves the ambiguity at compile time.
