@@ -28,8 +28,6 @@ The lexer takes an input stream of characters and emits `IEnumerable<IToken>`, o
 * **Recommended**: Use the source generator with C# attributes (`CustomLexerSourceGen.cs`) for IntelliSense and diagnostics.
 * **Advanced/manual**: Build lexer rules directly in code (`CustomLexer.cs`). This provides flexibility but **does not support analyzers**.
 
----
-
 ## 📚 LR(1) Parser
 
 The parser processes context-free grammar definitions, resolving them using **LR(1)** parsing logic. It supports:
