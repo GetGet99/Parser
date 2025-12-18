@@ -1,14 +1,20 @@
 ﻿using Get.PLShared;
+using System.Data;
 using System.Diagnostics;
 namespace Get.Parser;
 public static class LRParserRunner<TProgram>
 {
-    public static TProgram Parse(ILRParserDFA dfa, IEnumerable<ITerminalValue?> tokens)
+    public static TProgram Parse(ILRParserDFA dfa, IEnumerable<ITerminalValue?> tokens, bool debug = false)
     {
         List<ISyntaxElementValue> stack = [];
         foreach (var nextTokenForLoop in Infinite(tokens))
         {
             var nextToken = nextTokenForLoop;
+            if (debug)
+            {
+                Console.WriteLine($"Stack is now {string.Join(", ", stack)}");
+                Console.WriteLine($"Next Token: {nextToken}");
+            }
         rerun:
             ILRDFAAction? act;
             try
@@ -49,6 +55,7 @@ public static class LRParserRunner<TProgram>
         resolved:
             if (act is null) // SHIFT
             {
+                if (debug) Console.WriteLine($"SHIFT");
                 if (nextToken is null)
                     throw new InvalidOperationException(
                         "Can no longer shift the object, the DFA should be handling this."
@@ -58,6 +65,7 @@ public static class LRParserRunner<TProgram>
             else if (act is LRDFAReduce reduce)
             {
                 var rule = reduce.Rule;
+                if (debug) Console.WriteLine($"REDUCE WITH {rule.Target} <- {string.Join(" ", rule.Expressions)}");
                 var values = new ISyntaxElementValue[rule.Expressions.Count];
                 foreach (int i in ..values.Length)
                 {
@@ -81,6 +89,7 @@ public static class LRParserRunner<TProgram>
             }
             else if (act is ILRDFAAccept accept)
             {
+                if (debug) Console.WriteLine($"ACCEPT");
                 if (stack[0] is not INonTerminalValue<TProgram> programNode)
                     throw new InvalidOperationException("Not accepting on the program node or program does not implement INonTerminalValue<TProgram>");
                 return programNode.Value;

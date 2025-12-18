@@ -8,8 +8,6 @@ namespace Get.LangSupport;
 
 public partial class TextmateGrammarMetadata
 {
-    private static readonly Regex LanguageIdRegex = _LanguageIdRegex();
-    private static readonly Regex FileExtensionRegex = _FileExtensionRegex();
 
     public required string LanguageId
     {
@@ -81,11 +79,18 @@ public partial class TextmateGrammarMetadata
             WriteIndented = true
         });
     }
-
+#if NET7_0_OR_GREATER
+    private static readonly Regex LanguageIdRegex = _LanguageIdRegex();
+    private static readonly Regex FileExtensionRegex = _FileExtensionRegex();
     [GeneratedRegex(@"^\.\w[\w.-]*$", RegexOptions.Compiled)]
     private static partial Regex _FileExtensionRegex();
     [GeneratedRegex("^[a-z0-9-]+$", RegexOptions.Compiled)]
     private static partial Regex _LanguageIdRegex();
+#else
+
+    private static readonly Regex LanguageIdRegex = new(@"^\.\w[\w.-]*$");
+    private static readonly Regex FileExtensionRegex = new("^[a-z0-9-]+$");
+#endif
 }
 
 public static class TextmateGrammarGenerator
