@@ -6,6 +6,7 @@ using Microsoft.CodeAnalysis.CSharp.Syntax;
 using System.Text;
 
 namespace Get.Parser.SourceGenerator;
+
 [Generator]
 [AddAttributeConverter(typeof(ParserAttribute), ParametersAsString = "startNode: 0")]
 [AddAttributeConverter(typeof(RuleAttribute))]
@@ -191,6 +192,11 @@ partial class ParserGenerator : AttributeBaseGenerator<ParserAttribute, ParserGe
                     if (type is { TypeKind: TypeKind.Enum })
                     {
                         return $"({new FullType(type)}){value}";
+                    }
+                    else if (value is string str)
+                    {
+                        // escape it first
+                        return Microsoft.CodeAnalysis.CSharp.SymbolDisplay.FormatLiteral(str, true);
                     }
                     return option.ConstantParameterValue.ConstantParameterValue switch
                     {

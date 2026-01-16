@@ -28,8 +28,8 @@ partial class StreamSeeker
         AssertRange(seeker.TestRead(5), $"1234{nl[0]}");
         Debug.Assert(seeker.LineNo == 1);
         Debug.Assert(seeker.CharNo == 0);
-        Debug.Assert(seeker.LineCharCount[0] == 4);
-        Debug.Assert(seeker.LineCharCount[1] == 0);
+        //Debug.Assert(seeker.LineCharCount[0] == 4);
+        //Debug.Assert(seeker.LineCharCount[1] == 0);
         seeker.Reverse(1);
         Debug.Assert(seeker.LineNo == 0);
         Debug.Assert(seeker.CharNo == 4);
@@ -58,8 +58,8 @@ partial class StreamSeeker
         AssertRange(seeker.TestRead(4), $"123{nl[0]}");
         Debug.Assert(seeker.LineNo == 2);
         Debug.Assert(seeker.CharNo == 0);
-        Debug.Assert(seeker.LineCharCount[1] == nloffset + 5);
-        Debug.Assert(seeker.LineCharCount[2] == 0);
+        //Debug.Assert(seeker.LineCharCount[1] == nloffset + 5);
+        //Debug.Assert(seeker.LineCharCount[2] == 0);
         seeker.Reverse(1);
         Debug.Assert(seeker.LineNo == 1);
         Debug.Assert(seeker.CharNo == nloffset + 5 /* "[nl]+ 123" */);

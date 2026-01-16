@@ -1,117 +1,137 @@
-﻿using Get.RegexMachine;
-using System.Diagnostics;
-using System.Runtime.CompilerServices;
-using System.Text;
+﻿namespace Get.Lexer;
 
-namespace Get.Lexer;
-
-// Code By Gemini and I
-public partial class RotatingBuffer(int BufferSize)
+public partial class RotatingBuffer
 {
-    // Buffer is a buffer that, when we read a lot of text such that if it would pass the end, it wraps back to the beginning.
+    private readonly byte[] buffer;
+    private readonly int capacity;
 
-    int start = 0, end = 0, length = 0; // suggested fields
-    readonly byte[] buffer = new byte[BufferSize];
-    public int TotalReadAmount { get; private set; } = 0;
+    private int start = 0;   // logical index 0
+    private int length = 0;  // valid data length
+
+    public int TotalReadAmount { get; private set; }
+
+    public int Capacity => capacity;
+
+    public RotatingBuffer(int bufferSize)
+    {
+        if (bufferSize <= 0)
+            throw new ArgumentOutOfRangeException(nameof(bufferSize));
+
+        capacity = bufferSize;
+        buffer = new byte[capacity];
+    }
+
+    private int End => (start + length) % capacity;
+
+    /// <summary>
+    /// Helper for test functions – returns a copy of the requested range
+    /// from the still-buffered data.
+    /// </summary>
+    private byte[] this[Range range]
+    {
+        get
+        {
+            // Translate Range into absolute indices
+            var (offset, count) = range.GetOffsetAndLength(TotalReadAmount);
+
+            // Oldest index still available in the buffer
+            int earliestAvailable = TotalReadAmount - length;
+
+            if (offset < earliestAvailable)
+                throw new ArgumentOutOfRangeException(nameof(range),
+                    "Requested range has been overwritten by the buffer.");
+
+            if (offset + count > TotalReadAmount)
+                throw new ArgumentOutOfRangeException(nameof(range));
+
+            var result = new byte[count];
+
+            // Convert absolute index → buffer-relative index
+            int bufferOffset = offset - earliestAvailable;
+
+            for (int i = 0; i < count; i++)
+            {
+                result[i] = this[bufferOffset + i];
+            }
+
+            return result;
+        }
+    }
+
+    /// <summary>
+    /// Logical indexer: 0 is the oldest byte still in buffer
+    /// </summary>
     public byte this[int index]
     {
         get
         {
-            if (index >= TotalReadAmount)
-            {
-                throw new IndexOutOfRangeException("Index is beyond the total amount of data read.");
-            }
-            var realIdx = (start + index) % BufferSize;
-            return buffer[index];
+            if ((uint)index >= (uint)TotalReadAmount)
+                throw new IndexOutOfRangeException();
+
+            int realIndex = (start + index) % capacity;
+            return buffer[realIndex];
         }
     }
+
     /// <summary>
-    /// Helper for test function
+    /// Reads up to <paramref name="amount"/> bytes from the stream.
+    /// Returns false if the stream ended before reading that amount.
     /// </summary>
-    /// <param name="r">The range</param>
-    /// <returns>byte array</returns>
-    private byte[] this[Range r]
+    public bool Read(Stream stream, int amount)
     {
-        get
+        if (amount < 0 || amount > capacity)
+            throw new ArgumentOutOfRangeException(nameof(amount));
+
+        int remaining = amount;
+
+        while (remaining > 0)
         {
-            var (offset, length) = r.GetOffsetAndLength(TotalReadAmount);
-            var arr = new byte[length];
-            for (int i = 0; i < length; i++)
+            int writeIndex = End;
+            int contiguous = Math.Min(remaining, capacity - writeIndex);
+
+            int read = stream.Read(buffer, writeIndex, contiguous);
+            if (read == 0)
+                return false;
+
+            TotalReadAmount += read;
+            remaining -= read;
+
+            length += read;
+            if (length > capacity)
             {
-                arr[i] = this[offset + i];
+                int overflow = length - capacity;
+                start = (start + overflow) % capacity;
+                length = capacity;
             }
-            return arr;
-        }
-    }
-
-
-    // Reads amount bytes from the stream.
-    // If stream reaches the end before amount bytes, return false, otherwise, returns true.
-    public bool Read(Stream s, int amount)
-    {
-        if (amount > BufferSize)
-        {
-            throw new ArgumentOutOfRangeException(nameof(amount), "Amount cannot be greater than buffer size.");
-        }
-
-        // Calculate the remaining space in the buffer
-        int remainingSpace = BufferSize - end;
-        int bytesRead;
-        // If there's enough space, read directly into the buffer
-        if (remainingSpace >= amount)
-        {
-            bytesRead = s.Read(buffer, end, amount);
-            TotalReadAmount += bytesRead;
-            end += bytesRead;
-            length += bytesRead;
-            if (length > BufferSize) length = BufferSize;
-            if (bytesRead < amount) return false;
-            return true;
-        }
-
-        // Otherwise, we need to wrap around
-        int firstPart = BufferSize - start;
-        int secondPart = amount - firstPart;
-
-        // Read the first part into the buffer
-        bytesRead = s.Read(buffer, start, firstPart);
-        TotalReadAmount += bytesRead;
-        length += bytesRead;
-        if (length > BufferSize) length = BufferSize;
-        end = start + bytesRead;
-        if (bytesRead < firstPart) return false;
-
-        // If there's a second part, read it into the beginning of the buffer
-        if (secondPart > 0)
-        {
-            bytesRead = s.Read(buffer, 0, secondPart);
-            TotalReadAmount += bytesRead;
-            length += bytesRead;
-            if (length > BufferSize) length = BufferSize;
-            end = bytesRead;
-            start = 0;
-            if (bytesRead < secondPart) return false;
         }
 
         return true;
     }
-    // backtracks by amount bytes, if the amount is a little and can backtrack
-    // buffer such that the old value is still there, backtracks.
-    // otherwise, reset everything.
-    // Regardless of what happens, stream should be backtrack by that amount.
-    public void GoBack(Stream s, int amount)
+
+    /// <summary>
+    /// Rewinds the buffer and stream by <paramref name="amount"/> bytes.
+    /// If rewinding beyond buffer capacity, the buffer resets.
+    /// </summary>
+    public void GoBack(Stream stream, int amount)
     {
+        if (amount < 0)
+            throw new ArgumentOutOfRangeException(nameof(amount));
+
         TotalReadAmount -= amount;
-        if (amount > length)
+
+        if (amount >= length)
         {
             start = 0;
-            end = 0;
+            length = 0;
         }
         else
         {
-            end -= amount;
-            if (end < 0) end += BufferSize;
+            length -= amount;
         }
-        s.Seek(-amount, SeekOrigin.Current);
+
+        if (!stream.CanSeek)
+            throw new InvalidOperationException("Stream must support seeking.");
+
+        stream.Seek(-amount, SeekOrigin.Current);
     }
 }

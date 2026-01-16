@@ -87,6 +87,17 @@ partial class RegexParser : ParserBase<RegexParser.Terminal, RegexParser.NonTerm
         }
         return new(newStartState, newEndState);
     }
+    RegexNFAs DotHandler()
+    {
+        INFAState newStartState = CreateEmptyNFAState();
+        INFAState newEndState = CreateEmptyNFAState();
+        for (char c = char.MinValue; c <= 127; c++)
+        {
+            if (c is not ('\n' or '\r' or '\u2028' or '\u2029'))
+                newStartState.AddTransition(c, newEndState);
+        }
+        return new(newStartState, newEndState);
+    }
     RegexNFAs CharHandler(char c)
     {
         INFAState newStartState = CreateEmptyNFAState();
@@ -103,6 +114,22 @@ partial class RegexParser : ParserBase<RegexParser.Terminal, RegexParser.NonTerm
     {
         for (char c = a; c <= b; c++)
             yield return c;
+    }
+    static IEnumerable<char> RangeSpecialEscapeToClass(char beforeEscaped)
+    {
+        if (beforeEscaped is 's')
+        {
+            foreach (char c in " \t\n\r\f\v")
+                yield return c;
+        }
+        if (beforeEscaped is 'S')
+        {
+            for (char c = char.MinValue; c <= 127; c++)
+            {
+                if (c is not (' ' or '\t' or '\n' or '\r' or '\f' or '\v'))
+                    yield return c;
+            }
+        }
     }
     static HashSet<char> EmptyCharSet() => [];
     static HashSet<char> AddAll(HashSet<char> target, IEnumerable<char> src)
@@ -158,7 +185,9 @@ partial class RegexParser : ParserBase<RegexParser.Terminal, RegexParser.NonTerm
         [Type<char>]
         Dash,
         [Type<char>]
-        NormalCharOrSpecialEscape,
+        NormalCharOrSpecialEscapeToChar,
+        [Type<char>]
+        NormalCharOrSpecialEscapeToClass,
         [Type<char>]
         Other,
         // not a real terminal, used for precedence
@@ -167,13 +196,13 @@ partial class RegexParser : ParserBase<RegexParser.Terminal, RegexParser.NonTerm
     public enum NonTerminal
     {
         [Type<RegexNFAs>]
-        [Rule(Expr, AS, "val", nameof(Identity))]
+        [Rule(Expr, AS, VALUE, IDENTITY)]
         [Rule(nameof(EmptyString))]
         [Rule(Alternation, nameof(EmptyString))] // Regex @"|" is just like empty string
         [Rule(Alternation, Expr, AS, "a", nameof(Alt))]
         FinalRegex,
         [Type<RegexNFAs>]
-        [Rule(Primary, AS, "val", nameof(Identity))]
+        [Rule(Primary, AS, VALUE, IDENTITY)]
         [Rule(Expr, AS, "a", Alternation, Expr, AS, "b", nameof(Alt))] // a|b
         [Rule(Expr, AS, "a", Alternation, nameof(Alt))] // expr|
         [Rule(Expr, AS, "a", Expr, AS, "b", nameof(Cat), WITHPRECDENCE, Concatenation)] // ab
@@ -188,47 +217,50 @@ partial class RegexParser : ParserBase<RegexParser.Terminal, RegexParser.NonTerm
         [Rule(NonClassCharacter, AS, "c", nameof(CharHandler))]
         [Rule(OpenSquareBracket, Classes, AS, "chars", CloseSquareBracket, WITHPARAM, "inverse", false, nameof(ClassHandler))] // [classes]
         [Rule(OpenSquareBracket, Caret, Classes, AS, "chars", CloseSquareBracket, WITHPARAM, "inverse", true, nameof(ClassHandler))] // [^classes]
+        [Rule(Dot, nameof(DotHandler))] // .
         Primary,
         /// <summary>
         /// Character outside the [] notation
         /// </summary>
         [Type<char>]
-        [Rule(Character, AS, "val", nameof(Identity))]
-        [Rule(Caret, AS, "val", nameof(Identity))]
-        [Rule(Dash, AS, "val", nameof(Identity))]
+        [Rule(Character, AS, VALUE, IDENTITY)]
+        [Rule(Caret, AS, VALUE, IDENTITY)]
+        [Rule(Dash, AS, VALUE, IDENTITY)]
         NonClassCharacter,
         [Type<char>]
-        [Rule(Other, AS, "val", nameof(Identity))]
-        [Rule(SingleQuote, AS, "val", nameof(Identity))]
-        [Rule(DoubleQuote, AS, "val", nameof(Identity))]
-        [Rule(ExclaimationMark, AS, "val", nameof(Identity))]
-        [Rule(NormalCharOrSpecialEscape, AS, "val", nameof(Identity))]
-        [Rule(Backslash, NormalCharOrSpecialEscape, AS, "val", nameof(SpecialEscapeNCSE))]
+        [Rule(Other, AS, VALUE, IDENTITY)]
+        [Rule(SingleQuote, AS, VALUE, IDENTITY)]
+        [Rule(DoubleQuote, AS, VALUE, IDENTITY)]
+        [Rule(ExclaimationMark, AS, VALUE, IDENTITY)]
+        [Rule(NormalCharOrSpecialEscapeToChar, AS, VALUE, IDENTITY)]
+        [Rule(NormalCharOrSpecialEscapeToClass, AS, VALUE, IDENTITY)]
+        [Rule(Backslash, NormalCharOrSpecialEscapeToChar, AS, "val", nameof(SpecialEscapeNCSE))]
         // other escape characters
-        [Rule(Backslash, OpenBracket, AS, "val", nameof(Identity))]
-        [Rule(Backslash, CloseBracket, AS, "val", nameof(Identity))]
-        [Rule(Backslash, OpenSquareBracket, AS, "val", nameof(Identity))]
-        [Rule(Backslash, CloseSquareBracket, AS, "val", nameof(Identity))]
-        [Rule(Backslash, OpenCuryBracket, AS, "val", nameof(Identity))]
-        [Rule(Backslash, CloseCuryBracket, AS, "val", nameof(Identity))]
-        [Rule(Backslash, Alternation, AS, "val", nameof(Identity))]
-        [Rule(Backslash, Star, AS, "val", nameof(Identity))]
-        [Rule(Backslash, Plus, AS, "val", nameof(Identity))]
-        [Rule(Backslash, Caret, AS, "val", nameof(Identity))]
-        [Rule(Backslash, Backslash, AS, "val", nameof(Identity))]
-        [Rule(Backslash, SingleQuote, AS, "val", nameof(Identity))]
-        [Rule(Backslash, DoubleQuote, AS, "val", nameof(Identity))]
-        [Rule(Backslash, Dot, AS, "val", nameof(Identity))]
-        [Rule(Backslash, DollarSign, AS, "val", nameof(Identity))]
-        [Rule(Backslash, Dash, AS, "val", nameof(Identity))]
-        [Rule(Backslash, QuestionMark, AS, "val", nameof(Identity))]
-        [Rule(Backslash, ExclaimationMark, AS, "val", nameof(Identity))]
-        [Rule(Backslash, Equal, AS, "val", nameof(Identity))]
-        [Rule(Equal, AS, "val", nameof(Identity))]
+        [Rule(Backslash, OpenBracket, AS, VALUE, IDENTITY)]
+        [Rule(Backslash, CloseBracket, AS, VALUE, IDENTITY)]
+        [Rule(Backslash, OpenSquareBracket, AS, VALUE, IDENTITY)]
+        [Rule(Backslash, CloseSquareBracket, AS, VALUE, IDENTITY)]
+        [Rule(Backslash, OpenCuryBracket, AS, VALUE, IDENTITY)]
+        [Rule(Backslash, CloseCuryBracket, AS, VALUE, IDENTITY)]
+        [Rule(Backslash, Alternation, AS, VALUE, IDENTITY)]
+        [Rule(Backslash, Star, AS, VALUE, IDENTITY)]
+        [Rule(Backslash, Plus, AS, VALUE, IDENTITY)]
+        [Rule(Backslash, Caret, AS, VALUE, IDENTITY)]
+        [Rule(Backslash, Backslash, AS, VALUE, IDENTITY)]
+        [Rule(Backslash, SingleQuote, AS, VALUE, IDENTITY)]
+        [Rule(Backslash, DoubleQuote, AS, VALUE, IDENTITY)]
+        [Rule(Backslash, Dot, AS, VALUE, IDENTITY)]
+        [Rule(Backslash, DollarSign, AS, VALUE, IDENTITY)]
+        [Rule(Backslash, Dash, AS, VALUE, IDENTITY)]
+        [Rule(Backslash, QuestionMark, AS, VALUE, IDENTITY)]
+        [Rule(Backslash, ExclaimationMark, AS, VALUE, IDENTITY)]
+        [Rule(Backslash, Equal, AS, VALUE, IDENTITY)]
+        [Rule(Equal, AS, VALUE, IDENTITY)]
         Character,
         [Type<IEnumerable<char>>]
         [Rule(Character, AS, "a", nameof(SingleCharSet))]
         [Rule(Character, AS, "a", Dash, Character, AS, "b", nameof(RangeCharSet))]
+        [Rule(Backslash, NormalCharOrSpecialEscapeToClass, AS, "beforeEscaped", nameof(RangeSpecialEscapeToClass))]
         Class,
         [Type<HashSet<char>>]
         [Rule(nameof(EmptyCharSet))]
@@ -264,7 +296,8 @@ partial class RegexParser : ParserBase<RegexParser.Terminal, RegexParser.NonTerm
                 '.' => Dot,
                 '$' => DollarSign,
                 '-' => Dash,
-                'n' or 'r' or 't' => NormalCharOrSpecialEscape,
+                'n' or 'r' or 't' => NormalCharOrSpecialEscapeToChar,
+                's' or 'S' => NormalCharOrSpecialEscapeToClass,
                 _ => Other
             }, c);
         }
