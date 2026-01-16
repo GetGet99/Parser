@@ -112,7 +112,7 @@ class RuleAttrSyntaxParser : ParserBase<RuleAttrSyntaxParser.Terminal, RuleAttrS
                 select CreateRule(
                     NonTerminal.Constant, [
                         Syntax(term)
-                    ], x => CreateValue(NonTerminal.Constant, GetValue<TypedConstantValue>(x[0]))
+                    ], term is Terminal.String ? (x => CreateValue(NonTerminal.Constant, new TypedConstantValue(null, GetValue<string>(x[0])))): (x => CreateValue(NonTerminal.Constant, GetValue<TypedConstantValue>(x[0])))
                 ),
         ];
         var dfa = gen.CreateDFA(rules, Syntax(NonTerminal.Rule), []);

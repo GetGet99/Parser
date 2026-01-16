@@ -76,6 +76,7 @@ public abstract class LexerBase<TState, TTokenEnum> where TTokenEnum : Enum wher
     protected LexerBase(ITextSeekable text, TState initialState)
     {
         TextSeeker = text;
+        CurrentState = initialState;
         DFAs = DFASourceGenOutput();
         DFA = DFAs[initialState];
     }
@@ -107,8 +108,12 @@ public abstract class LexerBase<TState, TTokenEnum> where TTokenEnum : Enum wher
     /// <param name="state">The new state</param>
     protected void GoTo(TState state)
     {
+        CurrentState = state;
         DFA = DFAs[state];
     }
+
+    public TState CurrentState { get; private set; }
+
     /// <summary>
     /// Adds the token to the queue. Once your function returns,
     /// each token in the queue will be emitted first. Then, the

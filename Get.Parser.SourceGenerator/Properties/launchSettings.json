@@ -7,6 +7,10 @@
     "Source Gen: Get.RegexMachine": {
       "commandName": "DebugRoslynComponent",
       "targetProject": "..\\Get.RegexMachine\\Get.RegexMachine.csproj"
+    },
+    "Profile 1": {
+      "commandName": "DebugRoslynComponent",
+      "targetProject": "..\\..\\QuickMarkup.SourceGen\\QuickMarkup.SourceGen.csproj"
     }
   }
 }

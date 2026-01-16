@@ -1,68 +1,79 @@
 ﻿using Get.RegexMachine;
-using System.Diagnostics;
-using System.Text;
 
 namespace Get.Lexer;
 
-// Code By Gemini
-public partial class StreamSeeker(Stream stream, int ReadAmount = 256, int BufferSize = 1024) : ITextSeekable
+public partial class StreamSeeker : ITextSeekable
 {
-    readonly RotatingBuffer buffer = new(BufferSize: BufferSize);
+    private readonly Stream stream;
+    private readonly RotatingBuffer buffer;
+    private readonly int readAmount;
+
     private int bufferIndexCurrent = -1;
-    readonly List<int> LineCharCount = [0];
+    private readonly List<int> lineLengths = new() { 0 };
+
+    public int LineNo { get; private set; }
+    public int CharNo { get; private set; } = -1;
 
     public int CurrentPosition => bufferIndexCurrent;
-    public char Current => (char)buffer[bufferIndexCurrent];
+
+    public char Current =>
+        bufferIndexCurrent >= 0
+            ? (char)buffer[bufferIndexCurrent]
+            : throw new InvalidOperationException();
+
+    public StreamSeeker(Stream stream, int readAmount = 256, int bufferSize = 1024)
+    {
+        this.stream = stream;
+        this.readAmount = readAmount;
+        buffer = new RotatingBuffer(bufferSize);
+    }
 
     public bool MoveNext()
     {
         if (bufferIndexCurrent + 1 >= buffer.TotalReadAmount)
         {
-            buffer.Read(stream, ReadAmount);
+            if (!buffer.Read(stream, readAmount))
+            {
+                if (bufferIndexCurrent + 1 >= buffer.TotalReadAmount)
+                    return false;
+            }
         }
 
-        if (bufferIndexCurrent + 1 >= buffer.TotalReadAmount)
-        {
-            // no more characters
-            return false;
-        }
-        char prevChar = bufferIndexCurrent >= 0 ? (char)buffer[bufferIndexCurrent] : '\0';
+        char prev = bufferIndexCurrent >= 0 ? (char)buffer[bufferIndexCurrent] : '\0';
+
         bufferIndexCurrent++;
-        if ((char)buffer[bufferIndexCurrent] is '\r' || ((char)buffer[bufferIndexCurrent] is '\n' && prevChar is not '\r'))
+
+        char cur = (char)buffer[bufferIndexCurrent];
+
+        if (cur == '\r' || (cur == '\n' && prev != '\r'))
         {
-            LineCharCount.Add(0);
+            lineLengths.Add(0);
             LineNo++;
             CharNo = 0;
         }
         else
         {
             CharNo++;
-            LineCharCount[LineNo]++;
+            lineLengths[LineNo]++;
         }
+
         return true;
     }
 
-    public void Reset()
-    {
-        LineNo = 0;
-        CharNo = -1;
-        bufferIndexCurrent = -1;
-        buffer.GoBack(stream, buffer.TotalReadAmount);
-    }
-
-    public int LineNo { get; private set; }
-    public int CharNo { get; private set; } = -1;
-
     public void Reverse(int characters)
     {
-        if (CurrentPosition - characters is -1)
+        if (characters < 0)
+            throw new ArgumentOutOfRangeException(nameof(characters));
+
+        if (characters > buffer.Capacity)
+            throw new InvalidOperationException("Reverse exceeds buffer capacity.");
+
+        if (characters > bufferIndexCurrent)
         {
-            // allow resetting
             Reset();
             return;
         }
-        if (characters > bufferIndexCurrent)
-            throw new ArgumentOutOfRangeException();
+
         bufferIndexCurrent -= characters;
         buffer.GoBack(stream, characters);
 
@@ -71,13 +82,23 @@ public partial class StreamSeeker(Stream stream, int ReadAmount = 256, int Buffe
             if (CharNo == 0)
             {
                 LineNo--;
-                CharNo = LineCharCount[LineNo];
+                CharNo = lineLengths[LineNo];
             }
             else
             {
                 CharNo--;
-                LineCharCount[LineNo]--;
             }
         }
+    }
+
+    public void Reset()
+    {
+        if (!stream.CanSeek)
+            throw new InvalidOperationException();
+
+        LineNo = 0;
+        CharNo = -1;
+        bufferIndexCurrent = -1;
+        buffer.GoBack(stream, buffer.TotalReadAmount);
     }
 }
