@@ -1,4 +1,4 @@
-﻿using Get.RegexMachine;
+using Get.RegexMachine;
 
 namespace Get.Lexer;
 
@@ -22,19 +22,45 @@ public sealed class StringTextSeeker(string text) : ITextSeekable
         if (index + 1 >= text.Length)
             return false;
 
-        char prev = index >= 0 ? text[index] : '\0';
         index++;
-
         char cur = text[index];
 
-        if (cur == '\r' || (cur == '\n' && prev != '\r'))
+        if (cur == '\r')
         {
             LineNo++;
             CharNo = 0;
         }
+        else if (cur == '\n')
+        {
+            // If previous was '\r', this is part of CRLF,
+            // and we've already advanced the line.
+            if (index > 0 && text[index - 1] == '\r')
+            {
+                // Do nothing: already handled
+            }
+            else
+            {
+                LineNo++;
+                CharNo = 0;
+            }
+        }
         else
         {
-            CharNo++;
+            // First character in file
+            if (index == 0)
+            {
+                CharNo = 0;
+            }
+            // First character after newline
+            else if (text[index - 1] == '\n' ||
+                     text[index - 1] == '\r')
+            {
+                CharNo = 0;
+            }
+            else
+            {
+                CharNo++;
+            }
         }
 
         return true;
