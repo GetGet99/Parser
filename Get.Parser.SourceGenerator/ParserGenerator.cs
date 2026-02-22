@@ -1,4 +1,4 @@
-﻿using Get.EasyCSharp.GeneratorTools;
+using Get.EasyCSharp.GeneratorTools;
 using Get.EasyCSharp.GeneratorTools.SyntaxCreator.Members;
 using Get.Lexer;
 using Microsoft.CodeAnalysis;
@@ -314,12 +314,16 @@ partial class ParserGenerator : AttributeBaseGenerator<ParserAttribute, ParserGe
                         nttype is null ?
                         $"""
                         {reduceMethodCall};
-                        return CreateValue(({nonTerminalFT}){value});
+                        return CreateValue(
+                            ({nonTerminalFT}){value},
+                            reference: x
+                        );
                         """ :
                         $"""
                         return CreateValue<{new FullType(nttype)}>(
                             ({nonTerminalFT}){value},
-                            {reduceMethodCall.IndentWOF(1)}
+                            {reduceMethodCall.IndentWOF(1)},
+                            reference: x
                         );
                         """;
                 }
@@ -327,7 +331,13 @@ partial class ParserGenerator : AttributeBaseGenerator<ParserAttribute, ParserGe
                 {
                     if (nttype is null)
                     {
-                        creation = $"return CreateValue(({nonTerminalFT}){value});";
+                        creation = $"""
+                            return CreateValue(
+                                ({nonTerminalFT}){value},
+                                reference: x
+                            );
+                            """;
+                            
                         //Error(
                         //    ParserRuleNoTypeReturn,
                         //    reduceParserFunc.ParserFunc.ToString()
@@ -437,14 +447,16 @@ partial class ParserGenerator : AttributeBaseGenerator<ParserAttribute, ParserGe
                                 creation = $"""
                                     return CreateValue<{new FullType(nttype)}>(
                                         ({nonTerminalFT}){value},
-                                        ({val})
+                                        ({val}),
+                                        reference: x
                                     );
                                     """;
                             else if (reduceParserFunc.ParserFunc is ParserFuncs.SingleList)
                                 creation = $"""
                                     return CreateValue<{new FullType(nttype)}>(
                                         ({nonTerminalFT}){value},
-                                        [({val})]
+                                        [({val})],
+                                        reference: x
                                     );
                                     """;
                             else
@@ -501,7 +513,8 @@ partial class ParserGenerator : AttributeBaseGenerator<ParserAttribute, ParserGe
                             creation = $"""
                                 return CreateValue<{new FullType(nttype)}>(
                                     ({nonTerminalFT}){value},
-                                    []
+                                    [],
+                                    reference: x
                                 );
                                 """;
                             break;
@@ -650,7 +663,8 @@ partial class ParserGenerator : AttributeBaseGenerator<ParserAttribute, ParserGe
                                 {listName}.Add({val});
                                 return CreateValue<{new FullType(nttype)}>(
                                     ({nonTerminalFT}){value},
-                                    {listName}
+                                    {listName},
+                                    reference: x
                                 );
                                 """;
                             break;
@@ -669,7 +683,12 @@ partial class ParserGenerator : AttributeBaseGenerator<ParserAttribute, ParserGe
                         [
                             {{string.Join("\n",
                                 from ele in eles
-                                select $"""
+                                select (ele.Raw.IsTerminal && ele.Raw.RawEnum == ErrorTerminal.Singleton)
+                                    ? $"""
+                                    // Error Terminal
+                                    global::Get.Parser.ErrorTerminal.Singleton,
+                                    """
+                                    : $"""
                                     // {(ele.Raw.IsTerminal ? "Terminal" : "NonTerminal")}.???
                                     Syntax(({(ele.Raw.IsTerminal ? terminalFT : nonTerminalFT)}){ele.Raw.RawEnum}),
                                     """

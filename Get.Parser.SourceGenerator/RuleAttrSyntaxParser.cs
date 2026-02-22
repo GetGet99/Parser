@@ -1,4 +1,4 @@
-﻿using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis;
 using System.Collections.Immutable;
 
 namespace Get.Parser.SourceGenerator;
@@ -158,6 +158,9 @@ class RuleAttrSyntaxParser : ParserBase<RuleAttrSyntaxParser.Terminal, RuleAttrS
                                     continue;
                                 case (byte)ParserSourceGeneratorKeywords.WithPrecedence:
                                     yield return CreateValue(Terminal.WithPrecedence);
+                                    continue;
+                                case (byte)ParserSourceGeneratorKeywords.Error:
+                                    yield return CreateValue(Terminal.Terminal, (object)ErrorTerminal.Singleton);
                                     continue;
                                 case (byte)ParserSourceGeneratorKeywords.Identity:
                                     yield return CreateValue(Terminal.ParserFunc, ParserFuncs.Identity);

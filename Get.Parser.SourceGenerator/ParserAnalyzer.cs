@@ -1,4 +1,4 @@
-﻿using Get.EasyCSharp.GeneratorTools;
+using Get.EasyCSharp.GeneratorTools;
 using Get.EasyCSharp.GeneratorTools.SyntaxCreator.Members;
 using Get.Lexer;
 using Microsoft.CodeAnalysis;

@@ -1,4 +1,4 @@
-﻿using Get.EasyCSharp.GeneratorTools;
+using Get.EasyCSharp.GeneratorTools;
 using Get.EasyCSharp.GeneratorTools.SyntaxCreator.Members;
 using Get.Lexer;
 using Microsoft.CodeAnalysis;
@@ -194,7 +194,16 @@ partial class ParserConflictAnalyzer() : AttributeBaseAnalyzer<ParserAttribute, 
                 foreach (var ele in eles)
                 {
                     if (ele.Raw.IsTerminal)
-                        expr.Add(new Terminal(ele.Raw.RawEnum) { Name = TerminalNames[ele.Raw.RawEnum] });
+                    {
+                        if (ele.Raw.RawEnum == ErrorTerminal.Singleton)
+                        {
+                            expr.Add(ErrorTerminal.Singleton);
+                        }
+                        else
+                        {
+                            expr.Add(new Terminal(ele.Raw.RawEnum) { Name = TerminalNames[ele.Raw.RawEnum] });
+                        }
+                    }
                     else
                         expr.Add(new NonTerminal(ele.Raw.RawEnum) { Name = NonTerminalNames[ele.Raw.RawEnum] });
                 }
