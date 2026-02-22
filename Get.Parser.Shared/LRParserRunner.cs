@@ -1,10 +1,10 @@
-﻿using Get.PLShared;
+using Get.PLShared;
 using System.Data;
 using System.Diagnostics;
 namespace Get.Parser;
 public static class LRParserRunner<TProgram>
 {
-    public static TProgram Parse(ILRParserDFA dfa, IEnumerable<ITerminalValue?> tokens, bool debug = false)
+    public static TProgram Parse(ILRParserDFA dfa, IEnumerable<ITerminalValue?> tokens, bool debug = false, List<ErrorTerminalValue>? handledErrors = null)
     {
         List<ISyntaxElementValue> stack = [];
         foreach (var nextTokenForLoop in Infinite(tokens))
@@ -34,6 +34,7 @@ public static class LRParserRunner<TProgram>
                     try
                     {
                         act = dfa.GetAction(stack, nextToken);
+                        handledErrors?.Add(err);
                         goto resolved;
                     }
                     catch

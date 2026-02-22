@@ -1,4 +1,4 @@
-﻿#pragma warning disable CS9113 // Parameter is unread. Read by source generator
+#pragma warning disable CS9113 // Parameter is unread. Read by source generator
 namespace Get.Parser;
 
 public enum ParserSourceGeneratorKeywords : byte
@@ -12,5 +12,6 @@ public enum ParserSourceGeneratorKeywords : byte
     AppendList,
     Identity,
     List,
-    Value
+    Value,
+    Error
 }

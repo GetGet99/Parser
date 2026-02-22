@@ -1,4 +1,4 @@
-﻿using Get.PLShared;
+using Get.PLShared;
 
 namespace Get.Parser;
 
@@ -9,6 +9,10 @@ public abstract class ParserBase<Terminal, NonTerminal, TOut>
     protected const ParserSourceGeneratorKeywords WITHPARAM = ParserSourceGeneratorKeywords.WithParam;
     protected const ParserSourceGeneratorKeywords FUNCCALL = ParserSourceGeneratorKeywords.FuncCall;
     protected const ParserSourceGeneratorKeywords WITHPRECDENCE = ParserSourceGeneratorKeywords.WithPrecedence;
+    /// <summary>
+    /// denotes the error terminal
+    /// </summary>
+    protected const ParserSourceGeneratorKeywords ERROR = ParserSourceGeneratorKeywords.Error;
     /// <summary>
     /// <code>
     /// func EMPTYLIST:
@@ -52,19 +56,81 @@ public abstract class ParserBase<Terminal, NonTerminal, TOut>
     }
     protected abstract ILRParserDFA GenerateDFA();
     readonly ILRParserDFA ParserDFA;
-    public TOut Parse(IEnumerable<ITerminalValue?> inputTerminals, bool debug = false)
+    public TOut Parse(IEnumerable<ITerminalValue?> inputTerminals, bool debug = false, List<ErrorTerminalValue>? handledErrors = null)
     {
-        return LRParserRunner<TOut>.Parse(ParserDFA, inputTerminals, debug);
+        return LRParserRunner<TOut>.Parse(ParserDFA, inputTerminals, debug, handledErrors);
     }
     protected virtual bool IsCustomErrorHandlingEnabled => false;
-    protected static INonTerminalValue CreateValue(NonTerminal nt)
-        => new NonTerminalValue(nt);
-    protected static INonTerminalValue<T> CreateValue<T>(NonTerminal nt, T value)
-        => new NonTerminalValue<T>(nt, value);
-    protected static ITerminalValue CreateValue(Terminal t)
-        => new TerminalValue(t);
-    protected static ITerminalValue<T> CreateValue<T>(Terminal t, T value)
-        => new TerminalValue<T>(t, value);
+    protected static INonTerminalValue CreateValue(NonTerminal nt, Position start = default, Position end = default)
+        => new NonTerminalValue(nt) { Start = start, End = end };
+    protected static INonTerminalValue CreateValue(NonTerminal nt, ISyntaxElementValue[] reference)
+    {
+        Position start, end;
+        if (reference.Length is 0)
+        {
+            start = end = default;
+        }
+        else
+        {
+            start = reference[0].Start;
+            end = reference[^1].End;
+        }
+        return CreateValue(nt, start: start, end: end);
+    }
+    protected static INonTerminalValue<T> CreateValue<T>(NonTerminal nt, T value, Position start = default, Position end = default)
+    {
+        if (value is ISpanSetter spanSetter)
+        {
+            spanSetter.Start = start;
+            spanSetter.End = end;
+        }
+        return new NonTerminalValue<T>(nt, value) { Start = start, End = end };
+    }
+    protected static INonTerminalValue<T> CreateValue<T>(NonTerminal nt, T value, ISyntaxElementValue[] reference)
+    {
+        Position start, end;
+        if (reference.Length is 0)
+        {
+            start = end = default;
+        } else
+        {
+            start = reference[0].Start;
+            end = reference[^1].End;
+        }
+        return CreateValue(nt, value, start: start, end: end);
+    }
+    protected static ITerminalValue CreateValue(Terminal t, Position start = default, Position end = default)
+        => new TerminalValue(t) { Start = start, End = end };
+    protected static ITerminalValue CreateValue(Terminal t, ISyntaxElementValue[] reference)
+    {
+        Position start, end;
+        if (reference.Length is 0)
+        {
+            start = end = default;
+        }
+        else
+        {
+            start = reference[0].Start;
+            end = reference[^1].End;
+        }
+        return CreateValue(t, start: start, end: end);
+    }
+    protected static ITerminalValue<T> CreateValue<T>(Terminal t, T value, Position start = default, Position end = default)
+        => new TerminalValue<T>(t, value) { Start = start, End = end };
+    protected static ITerminalValue<T> CreateValue<T>(Terminal t, T value, ISyntaxElementValue[] reference)
+    {
+        Position start, end;
+        if (reference.Length is 0)
+        {
+            start = end = default;
+        }
+        else
+        {
+            start = reference[0].Start;
+            end = reference[^1].End;
+        }
+        return CreateValue(t, value, start: start, end: end);
+    }
     protected static INonTerminal Syntax(NonTerminal nt)
         => new NonTerminalWrapper(nt);
     protected static ITerminal Syntax(Terminal nt)

@@ -10,6 +10,7 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="$(MSBuildThisFileDirectory)Attributes.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)ISpanProvider.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)LRParserDFA.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)LRParserDFAGen.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)LRParserRunner.cs" />
