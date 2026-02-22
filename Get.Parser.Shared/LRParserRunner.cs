@@ -4,11 +4,12 @@ using System.Diagnostics;
 namespace Get.Parser;
 public static class LRParserRunner<TProgram>
 {
-    public static TProgram Parse(ILRParserDFA dfa, IEnumerable<ITerminalValue?> tokens, bool debug = false, List<ErrorTerminalValue>? handledErrors = null)
+    public static TProgram Parse(ILRParserDFA dfa, IEnumerable<ITerminalValue?> tokens, bool debug = false, List<ErrorTerminalValue>? handledErrors = null, bool skipErrorHandling = true)
     {
         List<ISyntaxElementValue> stack = [];
         foreach (var nextTokenForLoop in Infinite(tokens))
         {
+            bool insertionAttemptedForThisToken = false;
             var nextToken = nextTokenForLoop;
             if (debug)
             {
@@ -24,33 +25,63 @@ public static class LRParserRunner<TProgram>
             catch (LRParserRuntimeException e)
             {
                 // error handling
+
+                // backward compatability: if grammar wasn't made with error handling in mind
+                // new skipping token logic may lead to this function complete without throwing
+                // on invalid grammar
+                // grammar must opt in to error handling to do error handling
+                if (skipErrorHandling)
+                    throw;
+                
                 if (stack.Count is 0)
                     // i don't know
                     throw;
+
+                if (insertionAttemptedForThisToken)
+                {
+                    if (nextToken != null)
+                    {
+                        handledErrors?.Add(new ErrorTerminalValue(e)
+                        {
+                            Start = nextToken.Start,
+                            End = nextToken.End
+                        });
+                        continue;
+                    }
+
+                    throw;
+                }
+
+                ListSpan<ISyntaxElementValue> tempStack = new(stack, startIdx: 0, count: stack.Count);
                 var err = new ErrorTerminalValue(e) { Start = stack[^1].End, End = stack[^1].End };
-                stack[^1] = err;
-                while (stack.Count >= 1)
+                //stack[^1] = err;
+                do
                 {
                     try
                     {
-                        act = dfa.GetAction(stack, nextToken);
+                        act = dfa.GetAction(tempStack, err);
                         handledErrors?.Add(err);
+                        insertionAttemptedForThisToken = true;
+                        var itemsRemoved = stack.Count - tempStack.Count;
+                        if (itemsRemoved > 0)
+                            stack.RemoveRange(index: stack.Count - itemsRemoved, count: itemsRemoved);
                         goto resolved;
                     }
                     catch
                     {
-                        if (stack.Count >= 2)
+                        if (tempStack.Count >= 1)
                         {
-                            // skip error token at ^1, remove ^2
-                            err.Start = stack[^2].Start;
-                            stack.RemoveAt(stack.Count - 2);
+                            err.Start = tempStack[^1].Start;
+                            // remove stack[^1]
+                            tempStack = new(stack, startIdx: 0, count: tempStack.Count - 1);
                             continue;
                         }
                         // if no more to delete from stack,
-                        // break out of the loop and throw the original exception
+                        // break out of the loop and try to skip this problematic token.
                         break;
                     }
                 }
+                while (tempStack.Count > 0);
                 throw;
             }
         resolved:
