@@ -56,9 +56,9 @@ public abstract class ParserBase<Terminal, NonTerminal, TOut>
     }
     protected abstract ILRParserDFA GenerateDFA();
     readonly ILRParserDFA ParserDFA;
-    public TOut Parse(IEnumerable<ITerminalValue?> inputTerminals, bool debug = false, List<ErrorTerminalValue>? handledErrors = null)
+    public TOut Parse(IEnumerable<ITerminalValue?> inputTerminals, bool debug = false, List<ErrorTerminalValue>? handledErrors = null, bool skipErrorHandling = true)
     {
-        return LRParserRunner<TOut>.Parse(ParserDFA, inputTerminals, debug, handledErrors);
+        return LRParserRunner<TOut>.Parse(ParserDFA, inputTerminals, debug, handledErrors, skipErrorHandling);
     }
     protected virtual bool IsCustomErrorHandlingEnabled => false;
     protected static INonTerminalValue CreateValue(NonTerminal nt, Position start = default, Position end = default)
