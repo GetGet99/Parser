@@ -71,3 +71,9 @@ The framework detects lexer and parser conflicts **as you type**, directly insid
 </p>
 
 **Resolved**: Adding precedence resolves the ambiguity at compile time.
+
+---
+
+### Language authoring (detailed)
+
+For a step-by-step guide with examples (lexer states, parser rules, wiring tokens to `Parse`, and in-repo references), see [Language-Authoring-Guide.md](Language-Authoring-Guide.md).
