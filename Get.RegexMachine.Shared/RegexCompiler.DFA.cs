@@ -96,10 +96,10 @@ partial class RegexCompiler<T>
         {
             unchecked
             {
-                int hash = 17;
+                int hash = obj.Count;
                 foreach (var state in obj)
                 {
-                    hash = hash * 31 + state.GetHashCode();
+                    hash ^= state.GetHashCode();
                 }
                 return hash;
             }

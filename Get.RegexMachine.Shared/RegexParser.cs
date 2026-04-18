@@ -11,7 +11,8 @@ using static RegexParser.NonTerminal;
 )]
 partial class RegexParser : ParserBase<RegexParser.Terminal, RegexParser.NonTerminal, RegexNFAs>
 {
-    public static RegexParser Instance { get; } = new();
+    static readonly ThreadLocal<RegexParser> InstanceByThread = new(() => new());
+    public static RegexParser Instance => InstanceByThread.Value!;
     public Func<INFAState> CreateEmptyNFAState = null!;
     RegexNFAs EmptyString()
     {
