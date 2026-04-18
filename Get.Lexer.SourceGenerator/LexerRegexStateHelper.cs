@@ -12,8 +12,24 @@ static class LexerRegexStateHelper
         DiagnosticSeverity.Error,
         true
     );
+    public readonly static DiagnosticDescriptor RegexStateTypeMismatch = new(
+        "GR1004",
+        "Regex State Type Does Not Match Lexer State",
+        "Regex State should be an integer or a value of lexer state type {0}",
+        "Get.Lexer",
+        DiagnosticSeverity.Warning,
+        true
+    );
+    public readonly static DiagnosticDescriptor RegexStateUsesInteger = new(
+        "GR1005",
+        "Regex State Uses Integer",
+        "Regex State should use lexer state type {0} instead of an integer",
+        "Get.Lexer",
+        DiagnosticSeverity.Info,
+        true
+    );
 
-    public static bool TryGetRegexStates(AttributeData attributeData, Action<Diagnostic> reportDiagnostic, out int[] states)
+    public static bool TryGetRegexStates(AttributeData attributeData, Action<Diagnostic> reportDiagnostic, out int[] states, ITypeSymbol? lexerStateType = null)
     {
         states = [0];
         var hasState = false;
@@ -32,6 +48,8 @@ static class LexerRegexStateHelper
         var location = GetAttributeLocation(attributeData);
         if (stateConstant.Kind == TypedConstantKind.Enum && stateConstant.Type is INamedTypeSymbol enumType)
         {
+            if (lexerStateType is not null && !enumType.Equals(lexerStateType, SymbolEqualityComparer.Default))
+                reportDiagnostic(Diagnostic.Create(RegexStateTypeMismatch, location, lexerStateType));
             try
             {
                 var state = Convert.ToInt64(stateConstant.Value);
@@ -49,6 +67,8 @@ static class LexerRegexStateHelper
         }
         if (TryGetIntegerState(stateConstant, out var stateValue))
         {
+            if (lexerStateType is not null)
+                reportDiagnostic(Diagnostic.Create(RegexStateUsesInteger, location, lexerStateType));
             states = [stateValue];
             return true;
         }

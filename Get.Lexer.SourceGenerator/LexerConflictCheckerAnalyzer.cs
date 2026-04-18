@@ -33,7 +33,13 @@ abstract partial class LexerConflictCheckerAnalyzer() : AttributeBaseAnalyzer<Le
         DiagnosticSeverity.Error,
         true
     );
-    public static ImmutableArray<DiagnosticDescriptor> StaticSupportedDiagnostics => ImmutableArray.Create(MalformedRegexes, ConflictFound, LexerRegexStateHelper.InvalidRegexState);
+    public static ImmutableArray<DiagnosticDescriptor> StaticSupportedDiagnostics => ImmutableArray.Create(
+        MalformedRegexes,
+        ConflictFound,
+        LexerRegexStateHelper.InvalidRegexState,
+        LexerRegexStateHelper.RegexStateTypeMismatch,
+        LexerRegexStateHelper.RegexStateUsesInteger
+    );
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics => StaticSupportedDiagnostics;
 
     protected override void OnPointVisit(OnPointVisitArguments args)
@@ -51,13 +57,14 @@ abstract partial class LexerConflictCheckerAnalyzer() : AttributeBaseAnalyzer<Le
 
         var genContext = args.Context;
         var lexerTokensType = args.AttributeDatas[0].Wrapper.TLexerTokens;
+        var lexerStateType = args.Symbol.BaseType.TypeArguments[0];
         // this check is not perfect, but it's probably enough
         if (!lexerTokensType.GetAttributes().Any(x => x.AttributeClass?.Name is nameof(CompileTimeConflictCheckAttribute)))
         {
-            OnPointVisitShared(lexerTokensType, genContext, args.CancellationToken);
+            OnPointVisitShared(lexerTokensType, genContext, args.CancellationToken, lexerStateType);
         }
     }
-    public static void OnPointVisitShared(ITypeSymbol lexerTokensType, SyntaxNodeAnalysisContext context, CancellationToken CancellationToken)
+    public static void OnPointVisitShared(ITypeSymbol lexerTokensType, SyntaxNodeAnalysisContext context, CancellationToken CancellationToken, ITypeSymbol? lexerStateType = null)
     {
         var members = lexerTokensType.GetMembers();
         Dictionary<int, List<RegexVal<SyntaxReference>>> regexesByState = [];
@@ -81,7 +88,7 @@ abstract partial class LexerConflictCheckerAnalyzer() : AttributeBaseAnalyzer<Le
             // we just care about checking conflicts
             foreach (var (a, r) in typedRegexes)
             {
-                if (!LexerRegexStateHelper.TryGetRegexStates(a, context.ReportDiagnostic, out var states))
+                if (!LexerRegexStateHelper.TryGetRegexStates(a, context.ReportDiagnostic, out var states, lexerStateType))
                     continue;
                 foreach (var state in states)
                 {
@@ -98,7 +105,7 @@ abstract partial class LexerConflictCheckerAnalyzer() : AttributeBaseAnalyzer<Le
             CancellationToken.ThrowIfCancellationRequested();
             foreach (var (a, r) in Regexes)
             {
-                if (!LexerRegexStateHelper.TryGetRegexStates(a, context.ReportDiagnostic, out var states))
+                if (!LexerRegexStateHelper.TryGetRegexStates(a, context.ReportDiagnostic, out var states, lexerStateType))
                     continue;
                 foreach (var state in states)
                 {

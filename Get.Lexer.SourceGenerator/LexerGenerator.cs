@@ -89,6 +89,7 @@ partial class LexerGenerator : AttributeBaseGenerator<LexerAttributeBase, LexerG
         var baseType = lexerSymbol.BaseType!;
         var termType = new FullType(baseType.TypeArguments[1]);
         var stateType = new FullType(baseType.TypeArguments[0]);
+        var stateTypeSymbol = baseType.TypeArguments[0];
         HashSet<string> generatedPartials = [];
         HashSet<TypeAndName> generatedPartialsWithType = [];
         foreach (var token in members)
@@ -213,7 +214,7 @@ partial class LexerGenerator : AttributeBaseGenerator<LexerAttributeBase, LexerG
             }
             foreach (var (attrdata, r) in typedRegexes)
             {
-                if (!LexerRegexStateHelper.TryGetRegexStates(attrdata, diagnostics.Add, out var states))
+                if (!LexerRegexStateHelper.TryGetRegexStates(attrdata, diagnostics.Add, out var states, stateTypeSymbol))
                     continue;
                 foreach (var state in states)
                 {
@@ -235,7 +236,7 @@ partial class LexerGenerator : AttributeBaseGenerator<LexerAttributeBase, LexerG
             }
             foreach (var (attrdata, r) in Regexes)
             {
-                if (!LexerRegexStateHelper.TryGetRegexStates(attrdata, diagnostics.Add, out var states))
+                if (!LexerRegexStateHelper.TryGetRegexStates(attrdata, diagnostics.Add, out var states, stateTypeSymbol))
                     continue;
                 foreach (var state in states)
                 {

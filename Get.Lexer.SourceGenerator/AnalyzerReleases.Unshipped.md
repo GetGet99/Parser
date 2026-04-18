@@ -13,3 +13,5 @@ GL1005 | Get.Lexer | Error | LexerGenerator
 GR1001 | Get.Lexer | Error | LexerConflictChecker
 GR1002 | Get.Lexer | Error | LexerConflictChecker
 GR1003 | Get.Lexer | Error | LexerConflictChecker
+GR1004 | Get.Lexer | Warning | LexerConflictChecker
+GR1005 | Get.Lexer | Info | LexerConflictChecker
