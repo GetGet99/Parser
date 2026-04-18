@@ -211,66 +211,76 @@ partial class LexerGenerator : AttributeBaseGenerator<LexerAttributeBase, LexerG
                 // if there is a quote character, double it
                 return s.Replace("\"", "\"\"");
             }
-            foreach (var (_, r) in typedRegexes)
+            foreach (var (attrdata, r) in typedRegexes)
             {
-                if (!genereatedRegexes.TryGetValue(r.State, out var sb))
+                if (!LexerRegexStateHelper.TryGetRegexStates(attrdata, diagnostics.Add, out var states))
+                    continue;
+                foreach (var state in states)
                 {
-                    genereatedRegexes[r.State] = sb = new();
-                }
-                sb.AppendLine($"""
-                    new(
-                        @"{EscapeRegex(r.Regex)}",
-                        MakeFunc(
-                            {new FullType(lexerTokensType)}.{token.Name},
-                            {r.ImplementationMethodName}
+                    if (!genereatedRegexes.TryGetValue(state, out var sb))
+                    {
+                        genereatedRegexes[state] = sb = new();
+                    }
+                    sb.AppendLine($"""
+                        new(
+                            @"{EscapeRegex(r.Regex)}",
+                            MakeFunc(
+                                {new FullType(lexerTokensType)}.{token.Name},
+                                {r.ImplementationMethodName}
+                            ),
+                            {r.Order}
                         ),
-                        {r.Order}
-                    ),
-                    """);
+                        """);
+                }
             }
-            foreach (var (_, r) in Regexes)
+            foreach (var (attrdata, r) in Regexes)
             {
-                if (!genereatedRegexes.TryGetValue(r.State, out var sb))
+                if (!LexerRegexStateHelper.TryGetRegexStates(attrdata, diagnostics.Add, out var states))
+                    continue;
+                foreach (var state in states)
                 {
-                    genereatedRegexes[r.State] = sb = new();
-                }
-                if (r.ShouldReturnToken)
-                {
-                    if (r.RawImplementationMethodName is { } name)
-                        sb.AppendLine($"""
-                        new(
-                            @"{EscapeRegex(r.Regex)}",
-                            {name}, // raw implementation
-                            {r.Order}
-                        ),
-                        """);
+                    if (!genereatedRegexes.TryGetValue(state, out var sb))
+                    {
+                        genereatedRegexes[state] = sb = new();
+                    }
+                    if (r.ShouldReturnToken)
+                    {
+                        if (r.RawImplementationMethodName is { } name)
+                            sb.AppendLine($"""
+                            new(
+                                @"{EscapeRegex(r.Regex)}",
+                                {name}, // raw implementation
+                                {r.Order}
+                            ),
+                            """);
+                        else
+                            sb.AppendLine($"""
+                            new(
+                                @"{EscapeRegex(r.Regex)}",
+                                MakeFunc({new FullType(lexerTokensType)}.{token.Name}),
+                                {r.Order}
+                            ),
+                            """);
+                    }
                     else
-                        sb.AppendLine($"""
-                        new(
-                            @"{EscapeRegex(r.Regex)}",
-                            MakeFunc({new FullType(lexerTokensType)}.{token.Name}),
-                            {r.Order}
-                        ),
-                        """);
-                }
-                else
-                {
-                    if (r.RawImplementationMethodName is { } name)
-                        sb.AppendLine($"""
-                        new(
-                            @"{EscapeRegex(r.Regex)}",
-                            Empty({name}), // raw implementation
-                            {r.Order}
-                        ),
-                        """);
-                    else
-                        sb.AppendLine($"""
-                        new(
-                            @"{EscapeRegex(r.Regex)}",
-                            Empty(),
-                            {r.Order}
-                        ),
-                        """);
+                    {
+                        if (r.RawImplementationMethodName is { } name)
+                            sb.AppendLine($"""
+                            new(
+                                @"{EscapeRegex(r.Regex)}",
+                                Empty({name}), // raw implementation
+                                {r.Order}
+                            ),
+                            """);
+                        else
+                            sb.AppendLine($"""
+                            new(
+                                @"{EscapeRegex(r.Regex)}",
+                                Empty(),
+                                {r.Order}
+                            ),
+                            """);
+                    }
                 }
             }
         }

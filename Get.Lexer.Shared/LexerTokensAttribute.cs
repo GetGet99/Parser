@@ -22,7 +22,7 @@ public abstract class LexerAttributeBase : Attribute;
 public class RegexAttribute([StringSyntax(StringSyntaxAttribute.Regex)] string Regex, string? RawImplementationMethodName = null) : Attribute
 {
     public int Order { get; set; } = 0;
-    public int State { get; set; } = 0;
+    public object State { get; set; } = 0;
     /// <summary>
     /// Whether the regex should output a token.<br/><br/>
     /// For <see cref="RegexAttribute"/> manual implementation (ie. there is an implementation method),<br/>

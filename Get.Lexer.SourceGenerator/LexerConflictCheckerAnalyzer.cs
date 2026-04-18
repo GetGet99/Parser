@@ -33,8 +33,7 @@ abstract partial class LexerConflictCheckerAnalyzer() : AttributeBaseAnalyzer<Le
         DiagnosticSeverity.Error,
         true
     );
-
-    public static ImmutableArray<DiagnosticDescriptor> StaticSupportedDiagnostics => ImmutableArray.Create(MalformedRegexes, ConflictFound);
+    public static ImmutableArray<DiagnosticDescriptor> StaticSupportedDiagnostics => ImmutableArray.Create(MalformedRegexes, ConflictFound, LexerRegexStateHelper.InvalidRegexState);
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics => StaticSupportedDiagnostics;
 
     protected override void OnPointVisit(OnPointVisitArguments args)
@@ -82,26 +81,36 @@ abstract partial class LexerConflictCheckerAnalyzer() : AttributeBaseAnalyzer<Le
             // we just care about checking conflicts
             foreach (var (a, r) in typedRegexes)
             {
-                if (!regexesByState.TryGetValue(r.State, out var list))
+                if (!LexerRegexStateHelper.TryGetRegexStates(a, context.ReportDiagnostic, out var states))
+                    continue;
+                foreach (var state in states)
                 {
-                    regexesByState[r.State] = list = [];
+                    if (!regexesByState.TryGetValue(state, out var list))
+                    {
+                        regexesByState[state] = list = [];
+                    }
+                    // we can specify the genearted value as any value
+                    // that is useful as we don't care about this value
+                    // all we care is that there are no conflicts
+                    list.Add(new RegexVal<SyntaxReference>(r.Regex, a.ApplicationSyntaxReference ?? throw new NullReferenceException(), Order: r.Order));
                 }
-                // we can specify the genearted value as any value
-                // that is useful as we don't care about this value
-                // all we care is that there are no conflicts
-                list.Add(new RegexVal<SyntaxReference>(r.Regex, a.ApplicationSyntaxReference ?? throw new NullReferenceException(), Order: r.Order));
             }
             CancellationToken.ThrowIfCancellationRequested();
             foreach (var (a, r) in Regexes)
             {
-                if (!regexesByState.TryGetValue(r.State, out var list))
+                if (!LexerRegexStateHelper.TryGetRegexStates(a, context.ReportDiagnostic, out var states))
+                    continue;
+                foreach (var state in states)
                 {
-                    regexesByState[r.State] = list = [];
+                    if (!regexesByState.TryGetValue(state, out var list))
+                    {
+                        regexesByState[state] = list = [];
+                    }
+                    // we can specify the genearted value as any value
+                    // that is useful as we don't care about this value
+                    // all we care is that there are no conflicts
+                    list.Add(new RegexVal<SyntaxReference>(r.Regex, a.ApplicationSyntaxReference ?? throw new NullReferenceException(), Order: r.Order));
                 }
-                // we can specify the genearted value as any value
-                // that is useful as we don't care about this value
-                // all we care is that there are no conflicts
-                list.Add(new RegexVal<SyntaxReference>(r.Regex, a.ApplicationSyntaxReference ?? throw new NullReferenceException(), Order: r.Order));
             }
         }
         foreach (var kvp in regexesByState)
