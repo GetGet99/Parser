@@ -21,7 +21,7 @@
 	  <None Remove="bin\**" />
 	</ItemGroup>
 	<ItemGroup>
-		<ProjectReference Include="..\CopySourceGenerator\CopySourceGenerator.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
+		<!-- <ProjectReference Include="..\CopySourceGenerator\CopySourceGenerator.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" /> -->
 	</ItemGroup>
 	<ItemGroup>
 		<PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="4.6.0" PrivateAssets="all" />
