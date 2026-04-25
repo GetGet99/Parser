@@ -22,6 +22,21 @@ internal class LRParserDFA(IEqualityComparer<INonTerminal> nontermComparer, IEqu
                     return OnEndSymbol;
             }
             Actions.TryGetValue(nextToken.WithoutValue, out var act);
+
+            if (act is null && nextToken.WithoutValue == ErrorTerminal.Singleton)
+            {
+                foreach (var item in Items)
+                {
+                    if (item.ExpressionAfter.Count > 0)
+                    {
+                        if (item.ExpressionAfter[0] == ErrorTerminal.Singleton)
+                            // ok sure shift
+                            return act;
+                    }
+                }
+                // it's not even part of next item, it's not expected
+                throw new LRParserRuntimeUnexpectedInputException(nextToken);
+            }
             // return null (SHIFT) if we don't find it.
             return act;
         }
