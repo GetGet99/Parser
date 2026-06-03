@@ -62,15 +62,28 @@ public partial class TextmateGrammarMetadata
         """;
     }
 
-    public string GetGrammarJSON<T>(StringDict<T> repository)
+    public string GetGrammarJSON<T>(StringDict<T> repository) =>
+        GetGrammarJSON(repository, additionalEntries: null, repositoryIncludeOrder: null);
+
+    public string GetGrammarJSON<T>(
+        StringDict<T> repository,
+        StringDict<T>? additionalEntries,
+        IReadOnlyList<string>? repositoryIncludeOrder = null)
     {
+        if (additionalEntries != null)
+        {
+            foreach (var (key, value) in additionalEntries)
+                repository[key] = value;
+        }
+
+        var includeOrder = repositoryIncludeOrder ?? GetDefaultRepositoryIncludeOrder(repository.Keys);
         var grammar = new
         {
             scopeName = ScopeName,
-            patterns = new object[]
-            {
-                new { include = "#main" }
-            },
+            patterns = includeOrder
+                .Where(repository.ContainsKey)
+                .Select(key => (object)new { include = $"#{key}" })
+                .ToArray(),
             repository
         };
 
@@ -79,6 +92,15 @@ public partial class TextmateGrammarMetadata
             WriteIndented = true
         });
     }
+
+    /// <summary>
+    /// Fallback when <paramref name="repositoryIncludeOrder"/> is not supplied:
+    /// all keys alphabetically, with <c>main</c> last if present.
+    /// </summary>
+    private static List<string> GetDefaultRepositoryIncludeOrder(IEnumerable<string> keys) =>
+        keys.OrderBy(k => k == "main" ? 1 : 0)
+            .ThenBy(k => k, StringComparer.Ordinal)
+            .ToList();
 #if NET7_0_OR_GREATER
     private static readonly Regex LanguageIdRegex = _LanguageIdRegex();
     private static readonly Regex FileExtensionRegex = _FileExtensionRegex();
@@ -95,7 +117,11 @@ public partial class TextmateGrammarMetadata
 
 public static class TextmateGrammarGenerator
 {
-    public static StringDict<StringDict<List<StringDict<object>>>> GenerateRepository<TLexer>()
+    public static StringDict<StringDict<List<StringDict<object>>>> GenerateRepository<TLexer>() =>
+        GenerateRepository<TLexer>(additionalEntries: null);
+
+    public static StringDict<StringDict<List<StringDict<object>>>> GenerateRepository<TLexer>(
+        StringDict<StringDict<List<StringDict<object>>>>? additionalEntries)
     {
         var type = typeof(TLexer);
         var lexerAttr = type.GetCustomAttributes()
@@ -108,84 +134,199 @@ public static class TextmateGrammarGenerator
         if (!terminalType.IsEnum)
             throw new InvalidDataException("The type in the generic parameter must be an enum.");
 
-        // Priority -> List of rules with that priority, preserving order
-        var rulesByPriority = new SortedDictionary<int, List<StringDict<object>>>(Comparer<int>.Create((a, b) => b.CompareTo(a))); // descending order
+        // repositoryKey -> priority -> rules
+        var rulesByRepoAndPriority = new Dictionary<string, SortedDictionary<int, List<StringDict<object>>>>(
+            StringComparer.Ordinal);
 
         foreach (var field in terminalType.GetFields(BindingFlags.Public | BindingFlags.Static))
         {
             foreach (var scopeAttr in field.GetCustomAttributes<TextmateScopeAttribute>())
             {
-                List<string> regexes = new();
-
-                if (scopeAttr.Regexes != null)
+                var repoKey = scopeAttr.RepositoryKey;
+                if (!rulesByRepoAndPriority.TryGetValue(repoKey, out var rulesByPriority))
                 {
-                    regexes.AddRange(scopeAttr.Regexes);
-                }
-                else
-                {
-                    var regexAttrs = field.GetCustomAttributes<RegexAttribute>();
-                    regexes.AddRange(regexAttrs.Select(x => x.InputRegex));
+                    rulesByPriority = new SortedDictionary<int, List<StringDict<object>>>(
+                        Comparer<int>.Create((a, b) => b.CompareTo(a)));
+                    rulesByRepoAndPriority[repoKey] = rulesByPriority;
                 }
 
                 if (scopeAttr.Begin != null && scopeAttr.End != null)
                 {
-                    // begin/end rule (no regexes)
-                    var rule = new StringDict<object>
-                    {
-                        ["name"] = scopeAttr.Scope,
-                        ["begin"] = scopeAttr.Begin,
-                        ["end"] = scopeAttr.End
-                    };
-
-                    if (scopeAttr.InsideIncludes is { Length: > 0 })
-                    {
-                        rule["patterns"] = scopeAttr.InsideIncludes
-                            .Select(include => new Dictionary<string, string> { ["include"] = include })
-                            .ToArray();
-                    }
-
-                    if (!rulesByPriority.TryGetValue(scopeAttr.Priority, out var list))
-                    {
-                        list = [];
-                        rulesByPriority[scopeAttr.Priority] = list;
-                    }
-                    list.Add(rule);
+                    var rule = BuildBeginEndRule(scopeAttr);
+                    AddRule(rulesByPriority, scopeAttr.Priority, rule);
                 }
                 else
                 {
-                    // one rule per regex
+                    var regexes = CollectRegexes(field, scopeAttr);
+                    if (scopeAttr.DeduplicateRegexes)
+                        regexes = regexes.Distinct().ToList();
+
                     foreach (var regex in regexes)
                     {
-                        var rule = new StringDict<object>
-                        {
-                            ["name"] = scopeAttr.Scope,
-                            ["match"] = scopeAttr.AddBoundary ? @$"\b{regex}\b" : regex
-                        };
-
-                        if (!rulesByPriority.TryGetValue(scopeAttr.Priority, out var list))
-                        {
-                            list = [];
-                            rulesByPriority[scopeAttr.Priority] = list;
-                        }
-                        list.Add(rule);
+                        var rule = BuildMatchRule(scopeAttr, regex);
+                        AddRule(rulesByPriority, scopeAttr.Priority, rule);
                     }
                 }
             }
         }
 
-        // Flatten all rules into a single list ordered by priority descending
-        var allRules = rulesByPriority.Values.SelectMany(rules => rules).ToList();
-
-        // Construct repository dictionary with main -> { patterns = [...] }
-        var repository = new StringDict<StringDict<List<StringDict<object>>>>
+        var repository = new StringDict<StringDict<List<StringDict<object>>>>();
+        foreach (var (repoKey, rulesByPriority) in rulesByRepoAndPriority)
         {
-            ["main"] = new StringDict<List<StringDict<object>>>
+            var patterns = rulesByPriority.Values.SelectMany(rules => rules).ToList();
+            DeduplicateIdenticalRules(patterns);
+            repository[repoKey] = new StringDict<List<StringDict<object>>>
             {
-                ["patterns"] = allRules
-            }
-        };
+                ["patterns"] = patterns
+            };
+        }
+
+        if (additionalEntries != null)
+        {
+            foreach (var (key, value) in additionalEntries)
+                repository[key] = value;
+        }
+
+        if (!repository.ContainsKey("main"))
+        {
+            repository["main"] = new StringDict<List<StringDict<object>>>
+            {
+                ["patterns"] = []
+            };
+        }
 
         return repository;
     }
+
+    private static List<string> CollectRegexes(FieldInfo field, TextmateScopeAttribute scopeAttr)
+    {
+        if (scopeAttr.Regexes != null)
+            return scopeAttr.Regexes.ToList();
+
+        return field.GetCustomAttributes<RegexAttribute>()
+            .Select(x => x.InputRegex)
+            .ToList();
+    }
+
+    private static StringDict<object> BuildMatchRule(TextmateScopeAttribute scopeAttr, string regex)
+    {
+        var rule = new StringDict<object>
+        {
+            ["name"] = scopeAttr.Scope,
+            ["match"] = ApplyBoundary(scopeAttr.AddBoundary, regex)
+        };
+
+        AddCaptures(rule, "captures", scopeAttr.MatchCaptures);
+        return rule;
+    }
+
+    private static StringDict<object> BuildBeginEndRule(TextmateScopeAttribute scopeAttr)
+    {
+        var ruleName = scopeAttr.EmbeddedLanguage != null
+            ? $"meta.embedded.{scopeAttr.EmbeddedLanguage}"
+            : scopeAttr.Scope;
+
+        var rule = new StringDict<object>
+        {
+            ["name"] = ruleName,
+            ["begin"] = scopeAttr.Begin!,
+            ["end"] = scopeAttr.End!
+        };
+
+        AddCaptures(rule, "beginCaptures", scopeAttr.BeginCaptures);
+        AddCaptures(rule, "endCaptures", scopeAttr.EndCaptures);
+
+        var insidePatterns = BuildInsidePatterns(scopeAttr);
+        if (insidePatterns.Length > 0)
+            rule["patterns"] = insidePatterns;
+        return rule;
+    }
+
+    private static object[] BuildInsidePatterns(TextmateScopeAttribute scopeAttr)
+    {
+        var patterns = new List<StringDict<object>>();
+
+        if (scopeAttr.EmbeddedLanguage != null)
+        {
+            patterns.Add(new StringDict<object>
+            {
+                ["include"] = scopeAttr.EmbeddedGrammarScope ?? $"source.{scopeAttr.EmbeddedLanguage}"
+            });
+        }
+        else if (scopeAttr.ContentScope != null)
+        {
+            patterns.Add(new StringDict<object>
+            {
+                ["match"] = @"(?s).+",
+                ["name"] = scopeAttr.ContentScope
+            });
+        }
+
+        if (scopeAttr.InsideIncludes is { Length: > 0 })
+        {
+            patterns.AddRange(scopeAttr.InsideIncludes.Select(include => new StringDict<object>
+            {
+                ["include"] = include
+            }));
+        }
+
+        return patterns.ToArray();
+    }
+
+    private static void AddCaptures(
+        StringDict<object> rule,
+        string key,
+        Dictionary<string, string>? captures)
+    {
+        if (captures is not { Count: > 0 })
+            return;
+
+        var captureDict = new StringDict<StringDict<string>>();
+        foreach (var (group, scope) in captures)
+            captureDict[group] = new StringDict<string> { ["name"] = scope };
+
+        rule[key] = captureDict;
+    }
+
+    private static string ApplyBoundary(bool addBoundary, string regex)
+    {
+        if (!addBoundary)
+            return regex;
+
+        if (regex.Length == 0)
+            return regex;
+
+        var start = regex[0];
+        var end = regex[^1];
+        if (char.IsLetterOrDigit(start) && char.IsLetterOrDigit(end))
+            return $@"\b{regex}\b";
+
+        return regex;
+    }
+
+    private static void AddRule(
+        SortedDictionary<int, List<StringDict<object>>> rulesByPriority,
+        int priority,
+        StringDict<object> rule)
+    {
+        if (!rulesByPriority.TryGetValue(priority, out var list))
+        {
+            list = [];
+            rulesByPriority[priority] = list;
+        }
+        list.Add(rule);
+    }
+
+    private static void DeduplicateIdenticalRules(List<StringDict<object>> rules)
+    {
+        var seen = new HashSet<string>();
+        for (var i = rules.Count - 1; i >= 0; i--)
+        {
+            var key = JsonSerializer.Serialize(rules[i]);
+            if (!seen.Add(key))
+                rules.RemoveAt(i);
+        }
+    }
 }
+
 public class StringDict<T> : Dictionary<string, T> { }

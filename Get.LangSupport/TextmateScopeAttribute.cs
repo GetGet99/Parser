@@ -10,6 +10,14 @@ public class TextmateScopeAttribute(string scope) : Attribute
     public int Priority { get; set; } = 0; // default lowest priority
     public bool AddBoundary { get; set; } = false;
     /// <summary>
+    /// Repository key for grouping rules (e.g. "main", "comments", "strings").
+    /// </summary>
+    public string RepositoryKey { get; set; } = "main";
+    /// <summary>
+    /// When true (default), only one TextMate rule is emitted per unique regex on this field.
+    /// </summary>
+    public bool DeduplicateRegexes { get; set; } = true;
+    /// <summary>
     /// If this is null, it is inherited from ALL of the [Regex] attributes. Otherwise,
     /// we will use these ones.
     /// </summary>
@@ -38,7 +46,39 @@ public class TextmateScopeAttribute(string scope) : Attribute
     /// Ignored unless <see cref="Begin"/> and <see cref="End"/> is set.
     /// </remarks>
     public string[]? InsideIncludes { get; set; }
+
+    /// <summary>
+    /// VS Code embedded language id (emitted as <c>meta.embedded.{id}</c>).
+    /// </summary>
+    public string? EmbeddedLanguage { get; set; }
+
+    /// <summary>
+    /// TextMate grammar to include for embedded content (e.g. <c>source.cs</c>).
+    /// When null, defaults to <c>source.{<see cref="EmbeddedLanguage"/>}</c>.
+    /// </summary>
+    public string? EmbeddedGrammarScope { get; set; }
+
+    /// <summary>
+    /// Scope applied to content inside begin/end when not using <see cref="EmbeddedLanguage"/>.
+    /// </summary>
+    public string? ContentScope { get; set; }
+
+    /// <summary>
+    /// Capture group index → TextMate scope name for begin rules.
+    /// </summary>
+    public Dictionary<string, string>? BeginCaptures { get; set; }
+
+    /// <summary>
+    /// Capture group index → TextMate scope name for end rules.
+    /// </summary>
+    public Dictionary<string, string>? EndCaptures { get; set; }
+
+    /// <summary>
+    /// Capture group index → TextMate scope name for match rules.
+    /// </summary>
+    public Dictionary<string, string>? MatchCaptures { get; set; }
 }
+
 public enum KeywordType
 {
     Control,
