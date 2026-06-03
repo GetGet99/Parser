@@ -724,7 +724,7 @@ partial class ParserGenerator : AttributeBaseGenerator<ParserAttribute, ParserGe
         yield return $$"""
             protected override {{FullType.Of<ILRParserDFA>()}} GenerateDFA()
             {
-                return new {{FullType.Of<LRParserDFAGen>()}}({{FullType.Of<EqualityComparer<INonTerminal>>()}}.Default, global::System.Collections.Generic.EqualityComparer<{{terminalFT}}?>.Default).CreateDFA(
+                return new {{FullType.Of<LRParserDFAGen>()}}({{FullType.Of<EqualityComparer<INonTerminal>>()}}.Default, global::System.Collections.Generic.EqualityComparer<{{FullType.Of<ITerminal>(true)}}>.Default).CreateDFA(
                     [
                         {{sb.ToString().IndentWOF(3)}}
                     ],
