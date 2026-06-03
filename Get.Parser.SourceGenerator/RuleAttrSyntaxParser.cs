@@ -18,7 +18,7 @@ class RuleAttrSyntaxParser : ParserBase<RuleAttrSyntaxParser.Terminal, RuleAttrS
     }
     protected override ILRParserDFA GenerateDFA()
     {
-        var gen = new LRParserDFAGen(EqualityComparer<INonTerminal>.Default, EqualityComparer<ITerminal>.Default);
+        var gen = new LRParserDFAGen(EqualityComparer<INonTerminal>.Default, EqualityComparer<ITerminal?>.Default);
         ICFGRule[] rules = [
             CreateRule(NonTerminal.Rule, [
                 Syntax(NonTerminal.ElementList),

@@ -36,6 +36,7 @@ partial class AtributeConverterGenerator : GeneratorBase<ClassAttributeSyntaxRec
                 #pragma warning disable CS8618
                 #pragma warning disable CS8625
                 #pragma warning disable CS8601
+                #pragma warning disable CS8602
                 using System.Runtime.CompilerServices;
                 namespace {{@class.ContainingNamespace}}
                 {

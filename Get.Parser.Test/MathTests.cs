@@ -116,7 +116,7 @@ static class MathTests
         public ITerminal WithoutValue => number;
         ISyntaxElement ISyntaxElementValue.WithoutValue => WithoutValue;
     }
-    class TermComparer : IEqualityComparer<ITerminal>
+    class TermComparer : IEqualityComparer<ITerminal?>
     {
         public bool Equals(ITerminal? x, ITerminal? y)
         {

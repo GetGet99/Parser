@@ -13,7 +13,7 @@ static partial class TestManualRuleAttr
 {
     static ILRParserDFA GetDFA()
     {
-        var gen = new LRParserDFAGen(EqualityComparer<INonTerminal>.Default, EqualityComparer<ITerminal>.Default);
+        var gen = new LRParserDFAGen(EqualityComparer<INonTerminal>.Default, EqualityComparer<ITerminal?>.Default);
         ICFGRule[] rules = [
             new CFGRule(NonTerminal.Rule, [c(NonTerminal.ElementList), c(NonTerminal.OptionList), c(NonTerminal.ReduceAction)], x => {
                 return new Rule(

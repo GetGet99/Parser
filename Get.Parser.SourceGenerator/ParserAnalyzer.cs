@@ -127,7 +127,7 @@ partial class ParserAnalyzer() : AttributeBaseAnalyzer<ParserAttribute, ParserAn
         var terminalType = baseType.TypeArguments[0];
         var nonTerminalType = baseType.TypeArguments[1];
         var associativityType = genContext.SemanticModel.Compilation.GetTypeByMetadataName(typeof(Associativity).FullName);
-        var keywordType = genContext.SemanticModel.Compilation.GetTypeByMetadataName(typeof(ParserSourceGeneratorKeywords).FullName);
+        var keywordType = genContext.SemanticModel.Compilation.GetTypeByMetadataName(typeof(ParserSourceGeneratorKeywords).FullName)!;
         var nonTerminalFT = new FullType(nonTerminalType);
         var terminalFT = new FullType(terminalType);
 

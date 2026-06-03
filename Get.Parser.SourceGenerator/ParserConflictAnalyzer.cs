@@ -61,7 +61,7 @@ partial class ParserConflictAnalyzer() : AttributeBaseAnalyzer<ParserAttribute, 
         var terminalType = baseType.TypeArguments[0];
         var nonTerminalType = baseType.TypeArguments[1];
         var associativityType = genContext.SemanticModel.Compilation.GetTypeByMetadataName(typeof(Associativity).FullName);
-        var keywordType = genContext.SemanticModel.Compilation.GetTypeByMetadataName(typeof(ParserSourceGeneratorKeywords).FullName);
+        var keywordType = genContext.SemanticModel.Compilation.GetTypeByMetadataName(typeof(ParserSourceGeneratorKeywords).FullName)!;
         var nonTerminalFT = new FullType(nonTerminalType);
         var terminalFT = new FullType(terminalType);
 
@@ -153,11 +153,11 @@ partial class ParserConflictAnalyzer() : AttributeBaseAnalyzer<ParserAttribute, 
             {
                 precedenceList = PrecedenceAttrSyntaxParser.Parse(precedenceArgs, terminalType, associativityType);
             }
-            catch (LRParserRuntimeUnexpectedInputException e)
+            catch (LRParserRuntimeUnexpectedInputException)
             {
                 goto exit;
             }
-            catch (LRParserRuntimeUnexpectedEndingException e)
+            catch (LRParserRuntimeUnexpectedEndingException)
             {
                 goto exit;
             }
@@ -179,11 +179,11 @@ partial class ParserConflictAnalyzer() : AttributeBaseAnalyzer<ParserAttribute, 
                 {
                     rule = RuleAttrSyntaxParser.Parse(ruleargs, terminalType, nonTerminalType, keywordType);
                 }
-                catch (LRParserRuntimeUnexpectedInputException e)
+                catch (LRParserRuntimeUnexpectedInputException)
                 {
                     continue;
                 }
-                catch (LRParserRuntimeUnexpectedEndingException e)
+                catch (LRParserRuntimeUnexpectedEndingException)
                 {
                     continue;
                 }
@@ -214,7 +214,7 @@ partial class ParserConflictAnalyzer() : AttributeBaseAnalyzer<ParserAttribute, 
         try
         {
             var startNode = args.AttributeDatas[0].Wrapper.startNode;
-            new LRParserDFAGen(EqualityComparer<INonTerminal>.Default, EqualityComparer<ITerminal>.Default).CreateDFA(
+            new LRParserDFAGen(EqualityComparer<INonTerminal>.Default, EqualityComparer<ITerminal?>.Default).CreateDFA(
                 rules, new NonTerminal(startNode) { Name = NonTerminalNames[startNode] },
                 precedenceList.Count is 0 ? [] :
                 [.. from prec in precedenceList select

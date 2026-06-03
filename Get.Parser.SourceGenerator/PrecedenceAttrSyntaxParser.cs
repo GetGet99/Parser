@@ -15,7 +15,7 @@ class PrecedenceAttrSyntaxParser : ParserBase<PrecedenceAttrSyntaxParser.Termina
     }
     protected override ILRParserDFA GenerateDFA()
     {
-        var gen = new LRParserDFAGen(EqualityComparer<INonTerminal>.Default, EqualityComparer<ITerminal>.Default);
+        var gen = new LRParserDFAGen(EqualityComparer<INonTerminal>.Default, EqualityComparer<ITerminal?>.Default);
         ICFGRule[] rules = [
             CreateRule(NonTerminal.Precedence, [
                 Syntax(NonTerminal.TerminalList),

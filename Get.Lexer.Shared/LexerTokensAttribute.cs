@@ -1,6 +1,7 @@
 using System.Diagnostics.CodeAnalysis;
 
 namespace Get.Lexer;
+#pragma warning disable CS9113 // Parameter is unread - used by source generator
 /// <summary>
 /// Make the given class to become a lexer, with tokens and rules defined in the enum.
 /// </summary>

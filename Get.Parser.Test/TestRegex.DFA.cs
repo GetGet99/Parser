@@ -8,7 +8,7 @@ namespace Get.Parser.Test
     {
         static ILRParserDFA GetDFA()
         {
-            var gen = new LRParserDFAGen(EqualityComparer<INonTerminal>.Default, EqualityComparer<ITerminal>.Default);
+            var gen = new LRParserDFAGen(EqualityComparer<INonTerminal>.Default, EqualityComparer<ITerminal?>.Default);
             ICFGRule[] rules = [
                 new CFGRule(NonTerminal.FinalRegex, [c(NonTerminal.Expr)],
                 x => new FinalRegex((RegexExpr)x[0])),

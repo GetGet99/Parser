@@ -47,7 +47,7 @@ partial class ParserGenerator : AttributeBaseGenerator<ParserAttribute, ParserGe
         var terminalType = baseType.TypeArguments[0];
         var nonTerminalType = baseType.TypeArguments[1];
         var associativityType = genContext.SemanticModel.Compilation.GetTypeByMetadataName(typeof(Associativity).FullName);
-        var keywordType = genContext.SemanticModel.Compilation.GetTypeByMetadataName(typeof(ParserSourceGeneratorKeywords).FullName);
+        var keywordType = genContext.SemanticModel.Compilation.GetTypeByMetadataName(typeof(ParserSourceGeneratorKeywords).FullName)!;
         var nonTerminalFT = new FullType(nonTerminalType);
         var terminalFT = new FullType(terminalType);
 
@@ -134,11 +134,11 @@ partial class ParserGenerator : AttributeBaseGenerator<ParserAttribute, ParserGe
             {
                 precedenceList = PrecedenceAttrSyntaxParser.Parse(precedenceArgs, terminalType, associativityType);
             }
-            catch (LRParserRuntimeUnexpectedInputException e)
+            catch (LRParserRuntimeUnexpectedInputException)
             {
                 goto exit;
             }
-            catch (LRParserRuntimeUnexpectedEndingException e)
+            catch (LRParserRuntimeUnexpectedEndingException)
             {
                 goto exit;
             }
@@ -160,7 +160,7 @@ partial class ParserGenerator : AttributeBaseGenerator<ParserAttribute, ParserGe
                 {
                     rule = RuleAttrSyntaxParser.Parse(ruleargs, terminalType, nonTerminalType, keywordType);
                 }
-                catch (LRParserRuntimeUnexpectedInputException e)
+                catch (LRParserRuntimeUnexpectedInputException)
                 {
                     //var syn = raw.ApplicationSyntaxReference;
                     //args.Diagnostics.Add(Diagnostic.Create(
@@ -171,7 +171,7 @@ partial class ParserGenerator : AttributeBaseGenerator<ParserAttribute, ParserGe
                     //));
                     continue;
                 }
-                catch (LRParserRuntimeUnexpectedEndingException e)
+                catch (LRParserRuntimeUnexpectedEndingException)
                 {
                     //var syn = raw.ApplicationSyntaxReference;
                     //args.Diagnostics.Add(Diagnostic.Create(
@@ -208,6 +208,7 @@ partial class ParserGenerator : AttributeBaseGenerator<ParserAttribute, ParserGe
                 var nttype = NonTerminalTypes[value];
                 var (eles, constParams, red, ruleprec) = rule;
                 string creation;
+#pragma warning disable CS8321 // Local function is declared but never used
                 void Error(DiagnosticDescriptor desc, params object[] errorArgs)
                 {
                     var syn = raw.ApplicationSyntaxReference;
@@ -217,6 +218,7 @@ partial class ParserGenerator : AttributeBaseGenerator<ParserAttribute, ParserGe
                         errorArgs
                     ));
                 }
+#pragma warning restore CS8321 // Local function is declared but never used
                 if (red is ReduceMethod or ReduceConstructor)
                 {
                     StringBuilder reduceArgs = new();
@@ -722,7 +724,7 @@ partial class ParserGenerator : AttributeBaseGenerator<ParserAttribute, ParserGe
         yield return $$"""
             protected override {{FullType.Of<ILRParserDFA>()}} GenerateDFA()
             {
-                return new {{FullType.Of<LRParserDFAGen>()}}({{FullType.Of<EqualityComparer<INonTerminal>>()}}.Default, {{FullType.Of<EqualityComparer<ITerminal>>()}}.Default).CreateDFA(
+                return new {{FullType.Of<LRParserDFAGen>()}}({{FullType.Of<EqualityComparer<INonTerminal>>()}}.Default, global::System.Collections.Generic.EqualityComparer<{{terminalFT}}?>.Default).CreateDFA(
                     [
                         {{sb.ToString().IndentWOF(3)}}
                     ],

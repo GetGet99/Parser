@@ -121,7 +121,9 @@ public partial class ParserTypingProviderAnalyzer : DiagnosticAnalyzer
     readonly static DiagnosticDescriptor ParserNonterminalTypeInfo = new(
         "GPI001",
         "A nonterminal with type",
+#pragma warning disable RS1032 // Define diagnostic message correctly
         "{0} is a nonterminal of type {1}\n\nItems:\n{2}",
+#pragma warning restore RS1032 // Define diagnostic message correctly
         "Get.Parser",
         DiagnosticSeverity.Hidden,
         true
@@ -129,7 +131,9 @@ public partial class ParserTypingProviderAnalyzer : DiagnosticAnalyzer
     readonly static DiagnosticDescriptor ParserNonterminalNoTypeInfo = new(
         "GPI002",
         "A nonterminal without type",
+#pragma warning disable RS1032 // Define diagnostic message correctly
         "{0} is a nonterminal with no type\n\nItems:\n{1}",
+#pragma warning restore RS1032 // Define diagnostic message correctly
         "Get.Parser",
         DiagnosticSeverity.Hidden,
         true

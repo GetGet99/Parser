@@ -5,14 +5,17 @@
 
 Rule ID | Category | Severity | Notes
 --------|----------|----------|-------
-GL1001 | Get.Lexer | Error | LexerGenerator
-GL1002 | Get.Lexer | Error | LexerGenerator
-GL1003 | Get.Lexer | Error | LexerGenerator
-GL1004 | Get.Lexer | Error | LexerGenerator
-GL1005 | Get.Lexer | Error | LexerGenerator
 GP1001 | Get.Parser | Error | ParserGenerator
 GP1002 | Get.Parser | Error | ParserGenerator
 GP1003 | Get.Parser | Error | ParserGenerator
 GP1004 | Get.Parser | Error | ParserGenerator
-GR1001 | Get.Lexer | Error | LexerConflictChecker
-GR1002 | Get.Lexer | Error | LexerConflictChecker
+GP1005 | Get.Parser | Error | ParserAnalyzer
+GP1006 | Get.Parser | Error | ParserAnalyzer
+GP1007 | Get.Parser | Error | ParserAnalyzer
+GP1008 | Get.Parser | Error | ParserAnalyzer
+GPI001 | Get.Parser | Hidden | ParserTypingProviderAnalyzer
+GPI002 | Get.Parser | Hidden | ParserTypingProviderAnalyzer
+GPI003 | Get.Parser | Hidden | ParserTypingProviderAnalyzer
+GPI004 | Get.Parser | Hidden | ParserTypingProviderAnalyzer
+GPC001 | Get.Parser | Error | ParserConflictAnalyzer
+GPC002 | Get.Parser | Error | ParserConflictAnalyzer
