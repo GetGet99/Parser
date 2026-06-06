@@ -27,7 +27,7 @@ public partial class RotatingBuffer
     /// Helper for test functions – returns a copy of the requested range
     /// from the still-buffered data.
     /// </summary>
-    private byte[] this[Range range]
+    internal byte[] this[Range range]
     {
         get
         {
