@@ -1,7 +1,7 @@
 # Technical Debt Analysis & Resolution Plan
 
 Generated: 2026-06-06
-Last Updated: 2026-06-06 (Items 4, 5 partial, 8 completed; Item 5.1 completed)
+Last Updated: 2026-06-06 (Items 4, 5.1, 8 completed; 5 partially completed)
 
 ---
 
@@ -106,7 +106,7 @@ These implement core algorithms: NFA-to-DFA conversion, LR(1) closure, goto, and
 
 ### 5. Testing Gaps
 
-**Status:** 🟡 **Partially completed** — `Get.Parser.Test`, `Get.Lexer.Test`, `Get.LangSupport.Test` migrated; inline production-code tests moved.
+**Status:** 🟡 **Partially completed** — `Get.Parser.Test`, `Get.Lexer.Test`, `Get.LangSupport.Test` migrated; inline production-code tests moved; source generator snapshot tests added.
 
 **Problem:**
 - Only `Get.RegexMachine.Test` uses a proper test framework (MSTest).
@@ -125,11 +125,17 @@ These implement core algorithms: NFA-to-DFA conversion, LR(1) closure, goto, and
 6. `Get.LangSupport.Test` converted from console app → MSTest (2026-06-06): updated csproj with MSTest SDK, `Program.cs` cleared, created `LangSupportTests.cs` with 9 test methods covering metadata validation, contributions JSON, repository generation, grammar JSON output, and pattern verification.
 7. Moved `RotatingBuffer.Test.cs`, `StreamSeeker.Test.cs`, `TestUtils.cs` from `Get.Lexer/` production project to `Get.Lexer.Test/` as proper MSTest tests (2026-06-06): created `RotatingBufferTests.cs` (5 test methods) and `StreamSeekerTests.cs` (4 test methods), made `RotatingBuffer.this[Range]` internal + added `InternalsVisibleTo`. Fixed dead-code bugs in original tests (were never invoked). Deleted the 3 old files from `Get.Lexer/`.
 
+**Completed (2026-06-06):
+  1. ✅ Snapshot tests for source generator output — `Get.SourceGenerator.Test` project created with:
+     - `SnapshotTestBase.cs` — Roslyn compilation + generator driver helpers (reflection-loaded generators, metadata references)
+     - `ParserGeneratorSnapshotTests.cs` — 4 tests: load check, full run with output assertions, precedence grammar, no-attribute case
+     - `LexerGeneratorSnapshotTests.cs` — 3 tests: load check, full run, no-attribute case
+     - All 7 tests passing, 0 warnings/0 errors; project added to `Get.Parser.sln`
+
 **Remaining:**
-1. Add snapshot tests for source generator output.
 2. Add parse error recovery tests.
 
-**Effort:** Medium (4-8+ hours remaining).
+**Effort:** Small (2-3 hours remaining).
 
 ---
 
@@ -311,7 +317,7 @@ Made `CreateEmptyNFAState` a property with private setter. Added `Parse(string, 
 |-------|-------|-------------|--------|
 | **Phase 1 — Quick wins** | 3 (dead code), 6 (dead files), 7 (string perf), 11 (debug code), 13 (naming typo), 15 (PolySharp) | ~5-7 hours | ✅ **Completed** |
 | **Phase 2 — Core refactoring** | 1 (infra dedup ✅), 2 (ParserGenerator/Analyzer dedup ✅), 4 (AI code tests ✅), 8 (goto removal ✅), 9 (EOF handling ✅), 12 (thread safety ✅) | ~0 hours remaining | ✅ **Completed** |
-| **Phase 3 — Testing overhaul** | 5 (test framework migration — Get.Parser.Test ✅, Get.Lexer.Test ✅, inline tests moved ✅, new tests), 14 (Unicode support) | ~4-8 hours remaining | 🟡 In progress (Get.Parser.Test + Get.Lexer.Test + inline tests done) |
+| **Phase 3 — Testing overhaul** | 5 (test framework migration — Get.Parser.Test ✅, Get.Lexer.Test ✅, inline tests moved ✅, snapshot tests ✅), 14 (Unicode support) | ~2-3 hours remaining | 🟡 In progress (all item 5 except error recovery done) |
 | **Phase 4 — Polish** | 10 (target framework), 13 (remaining naming), 16 (Position format), 17 (XML docs) | ~6-8 hours | ⏳ Not started |
 | **Total** | | **~25-37 hours remaining** | |
 

@@ -1,0 +1,35 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.11.1" />
+    <PackageReference Include="MSTest" Version="3.6.1" />
+    <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="4.6.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Build source generators without adding type references (avoids type conflicts from embedded shared types) -->
+    <ProjectReference Include="..\Get.Parser.SourceGenerator\Get.Parser.SourceGenerator.csproj">
+      <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
+    </ProjectReference>
+    <ProjectReference Include="..\Get.Lexer.SourceGenerator\Get.Lexer.SourceGenerator.csproj">
+      <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
+    </ProjectReference>
+    <!-- Production libraries for metadata references in Roslyn compilation -->
+    <ProjectReference Include="..\Get.Parser\Get.Parser.csproj" />
+    <ProjectReference Include="..\Get.PLShared\Get.PLShared.csproj" />
+    <ProjectReference Include="..\Get.RegexMachine\Get.RegexMachine.csproj" />
+    <ProjectReference Include="..\Get.Lexer\Get.Lexer.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Microsoft.VisualStudio.TestTools.UnitTesting" />
+  </ItemGroup>
+
+</Project>
