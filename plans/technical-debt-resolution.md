@@ -106,7 +106,7 @@ These implement core algorithms: NFA-to-DFA conversion, LR(1) closure, goto, and
 
 ### 5. Testing Gaps
 
-**Status:** 🟡 **Partially completed** — `Get.Parser.Test` and `Get.Lexer.Test` migrated.
+**Status:** 🟡 **Partially completed** — `Get.Parser.Test`, `Get.Lexer.Test`, and `Get.LangSupport.Test` migrated.
 
 **Problem:**
 - Only `Get.RegexMachine.Test` uses a proper test framework (MSTest).
@@ -118,18 +118,18 @@ These implement core algorithms: NFA-to-DFA conversion, LR(1) closure, goto, and
 
 **Completed (2026-06-06):**
 1. `Get.Parser.Test` converted from console app → MSTest framework: `Get.Parser.Test.csproj` updated with MSTest SDK packages, `Program.cs` cleared (was the console entry point), all 7 test files rewritten with `[TestClass]`/`[TestMethod]` attributes and MSTest `Assert`.
-2. Fixed `TestRegex.Test` DFA grammar: added `Character → Star`/`Character → Plus` rules so operator characters work as literals inside `[...]` character classes. Resolved resulting shift-reduce conflict by adding `Star`/`Plus` to the precedence list and setting `PrecedenceTerminal: Concatenation` on `Expr → Primary`.
+2. Fixed `TestRegex.Test` DFA grammar: `Character → Star`/`Character → Plus` rules so operator characters work as literals inside `[...]` character classes. Resolved resulting shift-reduce conflict by adding `Star`/`Plus` to the precedence list and setting `PrecedenceTerminal: Concatenation` on `Expr → Primary`.
 3. Updated the C-comment regex AST assertion (`/\*[^*]*\*+([^/*][^*]*\*+)\*/`) — previously the test asserted a truncated 6-element parse (since `*` inside `[^*]` was unreachable); now correctly asserts the full 8-element parse.
 4. All 4 `Get.Parser.Test` tests pass; all 47 `Get.RegexMachine.Test` tests still pass.
 5. `Get.Lexer.Test` converted from console app → MSTest (2026-06-06): updated csproj with MSTest SDK, `Program.cs` cleared, created `LexerTests.cs` with 2 test methods. Fixed `[Lexer<Terminals>]` → `[Lexer<CustomLexerSourceGen.Terminals>]` in `CustomLexerSourceGen.cs` — unqualified attribute resolved to wrong namespace-level `Terminals` enum (from `CustomLexer.cs`) causing empty generated DFA.
+6. `Get.LangSupport.Test` converted from console app → MSTest (2026-06-06): updated csproj with MSTest SDK, `Program.cs` cleared, created `LangSupportTests.cs` with 9 test methods covering metadata validation, contributions JSON, repository generation, grammar JSON output, and pattern verification.
 
 **Remaining:**
-1. Migrate `Get.LangSupport.Test` (console app → MSTest).
-2. Move inline `partial class` tests (`RotatingBuffer.Test.cs`, `StreamSeeker.Test.cs`) from production projects to proper test projects.
-3. Add snapshot tests for source generator output.
-4. Add parse error recovery tests.
+1. Move inline `partial class` tests (`RotatingBuffer.Test.cs`, `StreamSeeker.Test.cs`) from production projects to proper test projects.
+2. Add snapshot tests for source generator output.
+3. Add parse error recovery tests.
 
-**Effort:** Medium (8-12+ hours remaining). Continue with `Get.LangSupport.Test` migration next.
+**Effort:** Medium (6-10+ hours remaining).
 
 ---
 

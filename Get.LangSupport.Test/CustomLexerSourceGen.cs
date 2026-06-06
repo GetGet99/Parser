@@ -1,4 +1,4 @@
-﻿#pragma warning disable CS0436 // Type conflicts with imported type
+#pragma warning disable CS0436 // Type conflicts with imported type
 using Get.Lexer;
 using Get.RegexMachine;
 namespace Get.LangSupport.Test;
@@ -47,4 +47,3 @@ partial class CustomLexerSourceGen(ITextSeekable text) : LexerBase<
         Times
     }
 }
-
