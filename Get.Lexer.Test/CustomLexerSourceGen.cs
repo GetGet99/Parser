@@ -2,7 +2,7 @@
 using Get.RegexMachine;
 namespace Get.Lexer.Test;
 
-[Lexer<Terminals>]
+[Lexer<CustomLexerSourceGen.Terminals>]
 partial class CustomLexerSourceGen(ITextSeekable text) : LexerBase<
     CustomLexerSourceGen.State,
     CustomLexerSourceGen.Terminals

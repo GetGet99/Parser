@@ -1,7 +1,7 @@
 # Technical Debt Analysis & Resolution Plan
 
 Generated: 2026-06-06
-Last Updated: 2026-06-06 (Items 4, 5 partial, 8 completed)
+Last Updated: 2026-06-06 (Items 4, 5 partial, 8 completed; Item 5.1 Get.Lexer.Test migrated)
 
 ---
 
@@ -106,7 +106,7 @@ These implement core algorithms: NFA-to-DFA conversion, LR(1) closure, goto, and
 
 ### 5. Testing Gaps
 
-**Status:** 🟡 **Partially completed** — `Get.Parser.Test` migrated and all 4 tests passing.
+**Status:** 🟡 **Partially completed** — `Get.Parser.Test` and `Get.Lexer.Test` migrated.
 
 **Problem:**
 - Only `Get.RegexMachine.Test` uses a proper test framework (MSTest).
@@ -121,15 +121,15 @@ These implement core algorithms: NFA-to-DFA conversion, LR(1) closure, goto, and
 2. Fixed `TestRegex.Test` DFA grammar: added `Character → Star`/`Character → Plus` rules so operator characters work as literals inside `[...]` character classes. Resolved resulting shift-reduce conflict by adding `Star`/`Plus` to the precedence list and setting `PrecedenceTerminal: Concatenation` on `Expr → Primary`.
 3. Updated the C-comment regex AST assertion (`/\*[^*]*\*+([^/*][^*]*\*+)\*/`) — previously the test asserted a truncated 6-element parse (since `*` inside `[^*]` was unreachable); now correctly asserts the full 8-element parse.
 4. All 4 `Get.Parser.Test` tests pass; all 47 `Get.RegexMachine.Test` tests still pass.
+5. `Get.Lexer.Test` converted from console app → MSTest (2026-06-06): updated csproj with MSTest SDK, `Program.cs` cleared, created `LexerTests.cs` with 2 test methods. Fixed `[Lexer<Terminals>]` → `[Lexer<CustomLexerSourceGen.Terminals>]` in `CustomLexerSourceGen.cs` — unqualified attribute resolved to wrong namespace-level `Terminals` enum (from `CustomLexer.cs`) causing empty generated DFA.
 
 **Remaining:**
-1. Migrate `Get.Lexer.Test` (console app → MSTest).
-2. Migrate `Get.LangSupport.Test` (console app → MSTest).
-3. Move inline `partial class` tests from production projects to proper test projects.
-4. Add snapshot tests for source generator output.
-5. Add parse error recovery tests.
+1. Migrate `Get.LangSupport.Test` (console app → MSTest).
+2. Move inline `partial class` tests (`RotatingBuffer.Test.cs`, `StreamSeeker.Test.cs`) from production projects to proper test projects.
+3. Add snapshot tests for source generator output.
+4. Add parse error recovery tests.
 
-**Effort:** Large (10-15+ hours remaining). Continue with `Get.Lexer.Test` migration next.
+**Effort:** Medium (8-12+ hours remaining). Continue with `Get.LangSupport.Test` migration next.
 
 ---
 
@@ -311,7 +311,7 @@ Made `CreateEmptyNFAState` a property with private setter. Added `Parse(string, 
 |-------|-------|-------------|--------|
 | **Phase 1 — Quick wins** | 3 (dead code), 6 (dead files), 7 (string perf), 11 (debug code), 13 (naming typo), 15 (PolySharp) | ~5-7 hours | ✅ **Completed** |
 | **Phase 2 — Core refactoring** | 1 (infra dedup ✅), 2 (ParserGenerator/Analyzer dedup ✅), 4 (AI code tests ✅), 8 (goto removal ✅), 9 (EOF handling ✅), 12 (thread safety ✅) | ~0 hours remaining | ✅ **Completed** |
-| **Phase 3 — Testing overhaul** | 5 (test framework migration — Get.Parser.Test ✅, new tests), 14 (Unicode support) | ~10-15 hours remaining | 🟡 In progress (Get.Parser.Test done) |
+| **Phase 3 — Testing overhaul** | 5 (test framework migration — Get.Parser.Test ✅, Get.Lexer.Test ✅, new tests), 14 (Unicode support) | ~8-12 hours remaining | 🟡 In progress (Get.Parser.Test + Get.Lexer.Test done) |
 | **Phase 4 — Polish** | 10 (target framework), 13 (remaining naming), 16 (Position format), 17 (XML docs) | ~6-8 hours | ⏳ Not started |
 | **Total** | | **~29-43 hours remaining** | |
 
@@ -331,3 +331,4 @@ These safe, mechanical changes have been completed:
 8. ✅ Eliminate commented-out code blocks — ParserGenerator.cs, LRParserDFAGen.cs, Extension.cs (3 copies)
 9. ✅ (Bonus) Restored `FullType.cs` — needed after SyntaxCreator deletion, added to both source generators
 10. ✅ Migrated `Get.Parser.Test` from console app → MSTest — 4/4 tests passing, fixed `*`-in-character-class grammar bug
+11. ✅ Migrated `Get.Lexer.Test` from console app → MSTest — 2/2 tests passing, fixed `[Lexer<Terminals>]` → `[Lexer<CustomLexerSourceGen.Terminals>]` to resolve type ambiguity in source generator attribute
