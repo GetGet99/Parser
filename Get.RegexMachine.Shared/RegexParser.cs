@@ -13,7 +13,7 @@ partial class RegexParser : ParserBase<RegexParser.Terminal, RegexParser.NonTerm
 {
     static readonly ThreadLocal<RegexParser> InstanceByThread = new(() => new());
     public static RegexParser Instance => InstanceByThread.Value!;
-    public Func<INFAState> CreateEmptyNFAState = null!;
+    public Func<INFAState> CreateEmptyNFAState { get; private set; } = null!;
     RegexNFAs EmptyString()
     {
         var state = CreateEmptyNFAState();
@@ -270,6 +270,11 @@ partial class RegexParser : ParserBase<RegexParser.Terminal, RegexParser.NonTerm
     }
     public RegexNFAs Parse([StringSyntax(StringSyntaxAttribute.Regex)] string regex)
     {
+        return Parse(Tokens(regex));
+    }
+    public RegexNFAs Parse([StringSyntax(StringSyntaxAttribute.Regex)] string regex, Func<INFAState> createEmptyNFAState)
+    {
+        CreateEmptyNFAState = createEmptyNFAState;
         return Parse(Tokens(regex));
     }
     static IEnumerable<ITerminalValue<char>> Tokens([StringSyntax(StringSyntaxAttribute.Regex)] string str)

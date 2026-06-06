@@ -36,10 +36,9 @@ partial class RegexCompiler<T> where T : class
     static (NFAState startState, NFAState endState) Generate(string regex, int ruleId, int order)
     {
         var parser = RegexParser.Instance;
-        parser.CreateEmptyNFAState = () => new NFAState(ruleId, order);
         try
         {
-            var nfastates = parser.Parse(regex);
+            var nfastates = parser.Parse(regex, () => new NFAState(ruleId, order));
             return ((NFAState)nfastates.StartState, (NFAState)nfastates.EndState);
         } catch (LRParserRuntimeException e)
         {

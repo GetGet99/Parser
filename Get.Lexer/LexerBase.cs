@@ -142,6 +142,12 @@ public abstract class LexerBase<TState, TTokenEnum> where TTokenEnum : Enum wher
     protected void YieldToken(TTokenEnum TokenType)
         => YieldToken(Make(TokenType));
 
+    /// <summary>
+    /// Called when the input is exhausted. Override to emit a terminal EOF token.
+    /// Default returns <c>null</c> (no EOF token, preserving original behavior).
+    /// </summary>
+    protected virtual IToken<TTokenEnum>? GetEOFToken() => null;
+
     Queue<IToken<TTokenEnum>> InternalQueue { get; } = [];
 
     RegexCompiler<Func<IToken<TTokenEnum>?>>.DFAState DFA;
@@ -165,7 +171,9 @@ public abstract class LexerBase<TState, TTokenEnum> where TTokenEnum : Enum wher
             }
             while (InternalQueue.Count > 0)
                 yield return InternalQueue.Dequeue();
-            yield break; // TODO: Handle EOF
+            if (GetEOFToken() is { } eofToken)
+                yield return eofToken;
+            yield break;
         }
     }
     /// <summary>
