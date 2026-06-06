@@ -261,7 +261,7 @@ Made `CreateEmptyNFAState` a property with private setter. Added `Parse(string, 
 
 ### 13. Naming Issues
 
-**Status:** ✅ Partially completed — fixed `GetMemeberRecursiveBaseType` → `GetMemberRecursiveBaseType` in all 3 Extension.cs copies + caller `AtributeConverterGenerator.cs`. Remaining: `IBacktrackableEnumerator` vs `IBacktrackableIterator.cs` filename mismatch, `DiagonosticString`, `Occured`.
+**Status:** ✅ **Completed** — all 3 remaining issues fixed (2026-06-06): renamed `IBacktrackableIterator.cs` → `IBacktrackableEnumerator.cs` to match type name + updated `.projitems` reference; fixed `DiagonosticString` → `DiagnosticString` in `LexerGenerator.cs`; fixed `Occured` → `Occurred` in `AttributeBaseGenerator.cs`.
 
 **Problems:**
 - `GetMemeberRecursiveBaseType` in `Extension.cs` line 130 (typo: "Memeber" → "Member"). **<span style="color:green">FIXED</span>**

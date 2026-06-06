@@ -138,7 +138,7 @@ abstract class AttributeBaseGenerator<TAttribute1, TAttributeDataType1, TSyntaxN
         {
             output = $"""
             /*
-                Exception Occured: {e.GetType().FullName}{e.Message}
+                Exception Occurred: {e.GetType().FullName}{e.Message}
                 Messsage: {e.Message}
                 Stack Trace:
                     {e.StackTrace.IndentWOF(2)}
@@ -243,7 +243,7 @@ abstract class AttributeBaseGenerator<TAttribute1, TAttributeDataType1, TAttribu
         {
             output = $"""
             /*
-                Exception Occured: {e.GetType().FullName}{e.Message}
+                Exception Occurred: {e.GetType().FullName}{e.Message}
                 Messsage: {e.Message}
                 Stack Trace:
                     {e.StackTrace.IndentWOF(2)}

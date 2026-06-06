@@ -14,10 +14,10 @@ partial class LexerGenerator : AttributeBaseGenerator<LexerAttributeBase, LexerG
 {
     class NonLocalizableString(string s) : LocalizableString
     {
-        public string DiagonosticString { get; } = s;
-        protected override bool AreEqual(object? other) => other is NonLocalizableString l && l.DiagonosticString == DiagonosticString;
-        protected override int GetHash() => DiagonosticString.GetHashCode();
-        protected override string GetText(IFormatProvider? formatProvider) => DiagonosticString;
+        public string DiagnosticString { get; } = s;
+        protected override bool AreEqual(object? other) => other is NonLocalizableString l && l.DiagnosticString == DiagnosticString;
+        protected override int GetHash() => DiagnosticString.GetHashCode();
+        protected override string GetText(IFormatProvider? formatProvider) => DiagnosticString;
     }
     readonly static DiagnosticDescriptor NotLexerBase = new(
         "GL1001",
