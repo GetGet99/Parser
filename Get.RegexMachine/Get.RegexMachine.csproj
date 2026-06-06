@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
 	<PropertyGroup>
-		<TargetFramework>netstandard2.0</TargetFramework>
+		<TargetFrameworks>netstandard2.0;net10.0</TargetFrameworks>
 		<ImplicitUsings>enable</ImplicitUsings>
 		<Nullable>enable</Nullable>
 		<IsAotCompatible Condition="$([MSBuild]::IsTargetFrameworkCompatible('$(TargetFramework)', 'net8.0'))">true</IsAotCompatible>
@@ -15,7 +15,7 @@
 
 	<ItemGroup>
 		<ProjectReference Include="..\Get.PLShared\Get.PLShared.csproj" />
-		<PackageReference Include="PolySharp" Version="1.14.1" PrivateAssets="all" />
+		<PackageReference Include="PolySharp" Version="1.14.1" PrivateAssets="all" Condition="'$(TargetFramework)' == 'netstandard2.0'" />
 		<ProjectReference Include="..\Get.Parser.SourceGenerator\Get.Parser.SourceGenerator.csproj" ReferenceOutputAssembly="False" OutputItemType="Analyzer" />
 		<ProjectReference Include="..\Get.Parser\Get.Parser.csproj" />
 	</ItemGroup>

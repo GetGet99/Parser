@@ -72,8 +72,8 @@ public partial class TextmateGrammarMetadata
     {
         if (additionalEntries != null)
         {
-            foreach (var (key, value) in additionalEntries)
-                repository[key] = value;
+            foreach (var kvp in additionalEntries)
+                repository[kvp.Key] = kvp.Value;
         }
 
         var includeOrder = repositoryIncludeOrder ?? GetDefaultRepositoryIncludeOrder(repository.Keys);
@@ -171,11 +171,11 @@ public static class TextmateGrammarGenerator
         }
 
         var repository = new StringDict<StringDict<List<StringDict<object>>>>();
-        foreach (var (repoKey, rulesByPriority) in rulesByRepoAndPriority)
+        foreach (var kvp in rulesByRepoAndPriority)
         {
-            var patterns = rulesByPriority.Values.SelectMany(rules => rules).ToList();
+            var patterns = kvp.Value.Values.SelectMany(rules => rules).ToList();
             DeduplicateIdenticalRules(patterns);
-            repository[repoKey] = new StringDict<List<StringDict<object>>>
+            repository[kvp.Key] = new StringDict<List<StringDict<object>>>
             {
                 ["patterns"] = patterns
             };
@@ -183,8 +183,8 @@ public static class TextmateGrammarGenerator
 
         if (additionalEntries != null)
         {
-            foreach (var (key, value) in additionalEntries)
-                repository[key] = value;
+            foreach (var kvp in additionalEntries)
+                repository[kvp.Key] = kvp.Value;
         }
 
         if (!repository.ContainsKey("main"))
@@ -282,8 +282,8 @@ public static class TextmateGrammarGenerator
             return;
 
         var captureDict = new StringDict<StringDict<string>>();
-        foreach (var (group, scope) in captures)
-            captureDict[group] = new StringDict<string> { ["name"] = scope };
+        foreach (var kvp in captures)
+            captureDict[kvp.Key] = new StringDict<string> { ["name"] = kvp.Value };
 
         rule[key] = captureDict;
     }
