@@ -159,15 +159,18 @@ Each match concatenation creates a new string, O(n²) for long inputs.
 
 ### 9. Unfinished EOF Handling in Lexer
 
+**Status:** ✅ **Completed** — 2026-06-06
+
 **Problem:** `Get.Lexer/LexerBase.cs` line 168:
 ```csharp
 yield break; // TODO: Handle EOF
 ```
 When the lexer reaches EOF during tokenization, it simply stops instead of producing a proper EOF token.
 
-**Resolution:** Add logic to yield an explicit EOF token type before breaking, consistent with the parser's expectation.
+**Resolution:**
+Added `protected virtual IToken<TTokenEnum>? GetEOFToken()` — default returns `null` (backward compat). When the input is exhausted, `GetTokens()` calls this and yields the result if non-null. Derived classes override to return a terminal EOF token with the current position.
 
-**Effort:** Small (1-2 hours). Need to define a convention for EOF token values.
+**Effort:** Small (30 min).
 
 ---
 
@@ -198,15 +201,18 @@ When the lexer reaches EOF during tokenization, it simply stops instead of produ
 
 ### 12. Thread Safety: ThreadLocal<RegexParser>
 
+**Status:** ✅ **Completed** — 2026-06-06
+
 **Problem:** `Get.RegexMachine.Shared/RegexParser.cs` line 14:
 ```csharp
 static readonly ThreadLocal<RegexParser> Instance = ...
 ```
 The `CreateEmptyNFAState` delegate property is mutable. If mutated after the thread-local is initialized, changes may not be visible to other threads (or worse, may race).
 
-**Resolution:** Make `CreateEmptyNFAState` an `init`-only property or pass it via constructor. If it must be mutable, add synchronization.
+**Resolution:**
+Made `CreateEmptyNFAState` a property with private setter. Added `Parse(string, Func<INFAState>)` overload that accepts the factory as a parameter, eliminating the mutation race window. Updated `RegexCompiler.NFA.cs` caller.
 
-**Effort:** Small (1 hour). Low risk of actual bugs since mutation is unlikely in practice.
+**Effort:** Small (30 min).
 
 ---
 
@@ -275,7 +281,7 @@ The `CreateEmptyNFAState` delegate property is mutable. If mutated after the thr
 | Phase | Items | Est. Effort | Status |
 |-------|-------|-------------|--------|
 | **Phase 1 — Quick wins** | 3 (dead code), 6 (dead files), 7 (string perf), 11 (debug code), 13 (naming typo), 15 (PolySharp) | ~5-7 hours | ✅ **Completed** |
-| **Phase 2 — Core refactoring** | 1 (infra dedup ✅), 2 (ParserGenerator/Analyzer dedup), 4 (AI code tests), 8 (goto removal), 9 (EOF handling), 12 (thread safety) | ~18-26 hours remaining | ⏳ In progress |
+| **Phase 2 — Core refactoring** | 1 (infra dedup ✅), 2 (ParserGenerator/Analyzer dedup), 4 (AI code tests), 8 (goto removal), 9 (EOF handling ✅), 12 (thread safety ✅) | ~13-19 hours remaining | ⏳ In progress |
 | **Phase 3 — Testing overhaul** | 5 (test framework migration, new tests), 14 (Unicode support) | ~15-20 hours | ⏳ Not started |
 | **Phase 4 — Polish** | 10 (target framework), 13 (remaining naming), 16 (Position format), 17 (XML docs) | ~6-8 hours | ⏳ Not started |
 | **Total** | | **~46-63 hours** | |
