@@ -1,13 +1,14 @@
 ﻿using Get.Lexer;
 using Get.PLShared;
 using Get.RegexMachine;
-using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Text;
+using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 namespace Get.Parser.Test;
 
-static class MathTests
+[TestClass]
+public class MathTests
 {
     static Terminal
         plus = "+",
@@ -193,7 +194,8 @@ static class MathTests
 
     }
 
-    public static void TestMath()
+    [TestMethod]
+    public void TestMath()
     {
         var dfa = MathLRDFAGen();
         foreach (var testCase1 in TestCases.Split(NewLine))
@@ -205,14 +207,10 @@ static class MathTests
             var ans = decimal.Parse(a[1]);
             var input = MathLexer.GetTerminals(expr);
             var output = LRParserRunner<decimal>.Parse(dfa, input);
-            if (output != ans)
-            {
-                Debugger.Break();
-            }
+            Assert.AreEqual(ans, output, $"Failed: {expr} = {ans}, got {output}");
         }
     }
-    [DoesNotReturn]
-    public static void Interpreter()
+    static void Interpreter()
     {
         var dfa = MathLRDFAGen();
         Console.WriteLine("Mathematics Interpreter");

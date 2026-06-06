@@ -1,10 +1,12 @@
 ﻿using Get.PLShared;
-using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 namespace Get.Parser.Test;
-static partial class TestRegex
+
+[TestClass]
+public partial class TestRegex
 {
-    public static void Test()
+    [TestMethod]
+    public void Test()
     {
         var dfa = GetDFA();
         {
@@ -13,8 +15,8 @@ static partial class TestRegex
             {
                 if (star.Expression.AssertIs<ClassExpr>(out var cls))
                 {
-                    Debug.Assert(cls.IsInverse is false);
-                    AssertEqualsAnyOrder(cls.Chars, "\t \r\n"); // these should compare with unescaped version
+                    Assert.IsFalse(cls.IsInverse);
+                    AssertEqualsAnyOrder(cls.Chars, "\t \r\n");
                 }
             }
         }
@@ -22,18 +24,18 @@ static partial class TestRegex
             var expr = LRParserRunner<FinalRegex>.Parse(dfa, Tokens(@"[\r\n \t]*[\r\n]")).Expression;
             if (expr.AssertIs<CatExpr>(out var cat))
             {
-                Debug.Assert(cat.Expressions.Length is 2);
+                Assert.AreEqual(2, cat.Expressions.Length);
                 if (cat.Expressions[0].AssertIs<StarExpr>(out var star))
                 {
                     if (star.Expression.AssertIs<ClassExpr>(out var cls))
                     {
-                        Debug.Assert(cls.IsInverse is false);
+                        Assert.IsFalse(cls.IsInverse);
                         AssertEqualsAnyOrder(cls.Chars, "\r\n \t");
                     }
                 }
                 if (cat.Expressions[1].AssertIs<ClassExpr>(out var cls2))
                 {
-                    Debug.Assert(cls2.IsInverse is false);
+                    Assert.IsFalse(cls2.IsInverse);
                     AssertEqualsAnyOrder(cls2.Chars, "\r\n");
                 }
             }
@@ -42,7 +44,7 @@ static partial class TestRegex
             var expr = LRParserRunner<FinalRegex>.Parse(dfa, Tokens(@";")).Expression;
             if (expr.AssertIs<CharExpr>(out var ch))
             {
-                Debug.Assert(ch.Char is ';');
+                Assert.AreEqual(';', ch.Char);
             }
         }
         {
@@ -51,7 +53,7 @@ static partial class TestRegex
             {
                 if (star.Expression.AssertIs<ClassExpr>(out var cls))
                 {
-                    Debug.Assert(cls.IsInverse is false);
+                    Assert.IsFalse(cls.IsInverse);
                     AssertEqualsAnyOrder(cls.Chars, " \t");
                 }
             }
@@ -62,7 +64,7 @@ static partial class TestRegex
             {
                 if (plus.Expression.AssertIs<ClassExpr>(out var cls))
                 {
-                    Debug.Assert(cls.IsInverse is false);
+                    Assert.IsFalse(cls.IsInverse);
                     AssertEqualsAnyOrder(cls.Chars, " \t");
                 }
             }
@@ -71,24 +73,24 @@ static partial class TestRegex
             var expr = LRParserRunner<FinalRegex>.Parse(dfa, Tokens(@"")).Expression;
             if (expr.AssertIs<CatExpr>(out var cat))
             {
-                Debug.Assert(cat.Expressions.Length is 0);
+                Assert.AreEqual(0, cat.Expressions.Length);
             }
         }
         {
             var expr = LRParserRunner<FinalRegex>.Parse(dfa, Tokens(@"[a-zA-Z][a-zA-Z0-9]*")).Expression;
             if (expr.AssertIs<CatExpr>(out var cat))
             {
-                Debug.Assert(cat.Expressions.Length is 2);
+                Assert.AreEqual(2, cat.Expressions.Length);
                 if (cat.Expressions[0].AssertIs<ClassExpr>(out var cls))
                 {
-                    Debug.Assert(cls.IsInverse is false);
+                    Assert.IsFalse(cls.IsInverse);
                     AssertEqualsAnyOrder(cls.Chars, CharRange('a', 'z').Concat(CharRange('A', 'Z')));
                 }
                 if (cat.Expressions[1].AssertIs<StarExpr>(out var star))
                 {
                     if (star.Expression.AssertIs<ClassExpr>(out var cls2))
                     {
-                        Debug.Assert(cls2.IsInverse is false);
+                        Assert.IsFalse(cls2.IsInverse);
                         AssertEqualsAnyOrder(cls2.Chars,
                             CharRange('a', 'z')
                             .Concat(CharRange('A', 'Z'))
@@ -116,7 +118,7 @@ static partial class TestRegex
             var expr = LRParserRunner<FinalRegex>.Parse(dfa, Tokens(@":")).Expression;
             if (expr.AssertIs<CharExpr>(out var ch))
             {
-                Debug.Assert(ch.Char is ':');
+                Assert.AreEqual(':', ch.Char);
             }
         }
         {
@@ -130,14 +132,14 @@ static partial class TestRegex
             var expr = LRParserRunner<FinalRegex>.Parse(dfa, Tokens(@"\(")).Expression;
             if (expr.AssertIs<CharExpr>(out var ch))
             {
-                Debug.Assert(ch.Char is '(');
+                Assert.AreEqual('(', ch.Char);
             }
         }
         {
             var expr = LRParserRunner<FinalRegex>.Parse(dfa, Tokens(@"\)")).Expression;
             if (expr.AssertIs<CharExpr>(out var ch))
             {
-                Debug.Assert(ch.Char is ')');
+                Assert.AreEqual(')', ch.Char);
             }
         }
         {
@@ -158,29 +160,29 @@ static partial class TestRegex
             var expr = LRParserRunner<FinalRegex>.Parse(dfa, Tokens(@"(-|)[0-9][0-9_]*")).Expression;
             if (expr.AssertIs<CatExpr>(out var cat))
             {
-                Debug.Assert(cat.Expressions.Length is 3);
+                Assert.AreEqual(3, cat.Expressions.Length);
                 if (cat.Expressions[0].AssertIs<AlternationExpr>(out var alt))
                 {
-                    Debug.Assert(alt.Expressions.Length is 2);
+                    Assert.AreEqual(2, alt.Expressions.Length);
                     if (alt.Expressions[0].AssertIs<CharExpr>(out var ch))
                     {
-                        Debug.Assert(ch.Char is '-');
+                        Assert.AreEqual('-', ch.Char);
                     }
                     if (alt.Expressions[1].AssertIs<CatExpr>(out var cat2))
                     {
-                        Debug.Assert(cat2.Expressions.Length is 0);
+                        Assert.AreEqual(0, cat2.Expressions.Length);
                     }
                 }
                 if (cat.Expressions[1].AssertIs<ClassExpr>(out var cls))
                 {
-                    Debug.Assert(cls.IsInverse is false);
+                    Assert.IsFalse(cls.IsInverse);
                     AssertEqualsAnyOrder(cls.Chars, CharRange('0', '9'));
                 }
                 if (cat.Expressions[2].AssertIs<StarExpr>(out var star))
                 {
                     if (star.Expression.AssertIs<ClassExpr>(out var cls2))
                     {
-                        Debug.Assert(cls2.IsInverse is false);
+                        Assert.IsFalse(cls2.IsInverse);
                         AssertEqualsAnyOrder(cls2.Chars, CharRange('0', '9').Append('_'));
                     }
                 }
@@ -190,13 +192,13 @@ static partial class TestRegex
             var expr = LRParserRunner<FinalRegex>.Parse(dfa, Tokens(@"0x[0-9a-fA-F]+")).Expression;
             if (expr.AssertIs<CatExpr>(out var cat))
             {
-                Debug.Assert(cat.Expressions.Length is 3);
+                Assert.AreEqual(3, cat.Expressions.Length);
                 AssertSequenceEqual(cat.Expressions[..2], "0x");
                 if (cat.Expressions[2].AssertIs<PlusExpr>(out var plus))
                 {
                     if (plus.Expression.AssertIs<ClassExpr>(out var cls))
                     {
-                        Debug.Assert(cls.IsInverse is false);
+                        Assert.IsFalse(cls.IsInverse);
                         AssertEqualsAnyOrder(cls.Chars,
                             CharRange('0', '9')
                             .Concat(CharRange('a', 'f'))
@@ -209,13 +211,13 @@ static partial class TestRegex
             var expr = LRParserRunner<FinalRegex>.Parse(dfa, Tokens(@"0b[01]+")).Expression;
             if (expr.AssertIs<CatExpr>(out var cat))
             {
-                Debug.Assert(cat.Expressions.Length is 3);
+                Assert.AreEqual(3, cat.Expressions.Length);
                 AssertSequenceEqual(cat.Expressions[..2], "0b");
                 if (cat.Expressions[2].AssertIs<PlusExpr>(out var plus))
                 {
                     if (plus.Expression.AssertIs<ClassExpr>(out var cls))
                     {
-                        Debug.Assert(cls.IsInverse is false);
+                        Assert.IsFalse(cls.IsInverse);
                         AssertEqualsAnyOrder(cls.Chars, CharRange('0', '1'));
                     }
                 }
@@ -225,98 +227,93 @@ static partial class TestRegex
             var expr = LRParserRunner<FinalRegex>.Parse(dfa, Tokens("""
                 "([^\r\n\"\\]|(\\(n|t|r|\'|\")))*"
                 """
-            // should've used class instead of several alternations for second one but I wasn't smart
-            // i guess it's a good test case
             )).Expression;
             if (expr.AssertIs<CatExpr>(out var cat))
             {
-                Debug.Assert(cat.Expressions.Length is 3); // "(something)*" counting quotes
+                Assert.AreEqual(3, cat.Expressions.Length);
                 if (cat.Expressions[0].AssertIs<CharExpr>(out var ch))
-                    Debug.Assert(ch.Char is '"');
+                    Assert.AreEqual('"', ch.Char);
                 if (cat.Expressions[1].AssertIs<StarExpr>(out var star))
                 {
                     if (star.Expression.AssertIs<AlternationExpr>(out var alt))
                     {
-                        Debug.Assert(alt.Expressions.Length is 2);
+                        Assert.AreEqual(2, alt.Expressions.Length);
                         if (alt.Expressions[0].AssertIs<ClassExpr>(out var cls2))
                         {
-                            Debug.Assert(cls2.IsInverse is true);
+                            Assert.IsTrue(cls2.IsInverse);
                             AssertEqualsAnyOrder(cls2.Chars, "\r\n\"\\");
                         }
                         if (alt.Expressions[1].AssertIs<CatExpr>(out var cat2))
                         {
-                            Debug.Assert(cat2.Expressions.Length is 2);
+                            Assert.AreEqual(2, cat2.Expressions.Length);
                             if (cat2.Expressions[0].AssertIs<CharExpr>(out var ch2))
                             {
-                                Debug.Assert(ch2.Char is '\\');
+                                Assert.AreEqual('\\', ch2.Char);
                             }
                             if (cat2.Expressions[1].AssertIs<AlternationExpr>(out var alt2))
                             {
-                                // at least i can still reuse this for alternation
                                 AssertSequenceEqual(alt2.Expressions, "ntr\'\"");
                             }
                         }
                     }
                 }
                 if (cat.Expressions[2].AssertIs<CharExpr>(out var ch3))
-                    Debug.Assert(ch3.Char is '"');
+                    Assert.AreEqual('"', ch3.Char);
             }
         }
         {
             var expr = LRParserRunner<FinalRegex>.Parse(dfa, Tokens("""
                 '([^\r\n\'\\]|(\\(n|t|r|\'|\")))'
                 """
-            // again should've used class instead of several alternations
             )).Expression;
             if (expr.AssertIs<CatExpr>(out var cat))
             {
-                Debug.Assert(cat.Expressions.Length is 3); // "(something)*" counting quotes
+                Assert.AreEqual(3, cat.Expressions.Length);
                 if (cat.Expressions[0].AssertIs<CharExpr>(out var ch))
-                    Debug.Assert(ch.Char is '\'');
+                    Assert.AreEqual('\'', ch.Char);
                 if (cat.Expressions[1].AssertIs<AlternationExpr>(out var alt))
                 {
-                    Debug.Assert(alt.Expressions.Length is 2);
+                    Assert.AreEqual(2, alt.Expressions.Length);
                     if (alt.Expressions[0].AssertIs<ClassExpr>(out var cls2))
                     {
-                        Debug.Assert(cls2.IsInverse is true);
+                        Assert.IsTrue(cls2.IsInverse);
                         AssertEqualsAnyOrder(cls2.Chars, "\r\n\'\\");
                     }
                     if (alt.Expressions[1].AssertIs<CatExpr>(out var cat2))
                     {
-                        Debug.Assert(cat2.Expressions.Length is 2);
+                        Assert.AreEqual(2, cat2.Expressions.Length);
                         if (cat2.Expressions[0].AssertIs<CharExpr>(out var ch2))
                         {
-                            Debug.Assert(ch2.Char is '\\');
+                            Assert.AreEqual('\\', ch2.Char);
                         }
                         if (cat2.Expressions[1].AssertIs<AlternationExpr>(out var alt2))
                         {
-                            // at least i can still reuse this for alternation
                             AssertSequenceEqual(alt2.Expressions, "ntr\'\"");
                         }
                     }
                 }
                 if (cat.Expressions[2].AssertIs<CharExpr>(out var ch3))
-                    Debug.Assert(ch3.Char is '\'');
+                    Assert.AreEqual('\'', ch3.Char);
             }
         }
         {
             var expr = LRParserRunner<FinalRegex>.Parse(dfa, Tokens(@"|")).Expression;
             if (expr.AssertIs<AlternationExpr>(out var alt))
             {
-                Debug.Assert(alt.Expressions.Length is 2);
+                Assert.AreEqual(2, alt.Expressions.Length);
                 if (alt.Expressions[0].AssertIs<CatExpr>(out var cat))
-                    Debug.Assert(cat.Expressions.Length is 0);
+                    Assert.AreEqual(0, cat.Expressions.Length);
                 if (alt.Expressions[1].AssertIs<CatExpr>(out var cat1))
-                    Debug.Assert(cat1.Expressions.Length is 0);
+                    Assert.AreEqual(0, cat1.Expressions.Length);
             }
         }
         {
             var expr = LRParserRunner<FinalRegex>.Parse(dfa, Tokens(@"|abcdefg")).Expression;
             if (expr.AssertIs<AlternationExpr>(out var alt))
             {
-                Debug.Assert(alt.Expressions.Length is 2);
+                Assert.AreEqual(2, alt.Expressions.Length);
                 if (alt.Expressions[0].AssertIs<CatExpr>(out var cat))
-                    Debug.Assert(cat.Expressions.Length is 0);
+                    Assert.AreEqual(0, cat.Expressions.Length);
                 if (alt.Expressions[1].AssertIs<CatExpr>(out var cat1))
                     AssertSequenceEqual(cat1.Expressions, "abcdefg");
             }
@@ -325,20 +322,20 @@ static partial class TestRegex
             var expr = LRParserRunner<FinalRegex>.Parse(dfa, Tokens(@"(|)")).Expression;
             if (expr.AssertIs<AlternationExpr>(out var alt))
             {
-                Debug.Assert(alt.Expressions.Length is 2);
+                Assert.AreEqual(2, alt.Expressions.Length);
                 if (alt.Expressions[0].AssertIs<CatExpr>(out var cat))
-                    Debug.Assert(cat.Expressions.Length is 0);
+                    Assert.AreEqual(0, cat.Expressions.Length);
                 if (alt.Expressions[1].AssertIs<CatExpr>(out var cat1))
-                    Debug.Assert(cat1.Expressions.Length is 0);
+                    Assert.AreEqual(0, cat1.Expressions.Length);
             }
         }
         {
             var expr = LRParserRunner<FinalRegex>.Parse(dfa, Tokens(@"(|abcdefg)")).Expression;
             if (expr.AssertIs<AlternationExpr>(out var alt))
             {
-                Debug.Assert(alt.Expressions.Length is 2);
+                Assert.AreEqual(2, alt.Expressions.Length);
                 if (alt.Expressions[0].AssertIs<CatExpr>(out var cat))
-                    Debug.Assert(cat.Expressions.Length is 0);
+                    Assert.AreEqual(0, cat.Expressions.Length);
                 if (alt.Expressions[1].AssertIs<CatExpr>(out var cat1))
                     AssertSequenceEqual(cat1.Expressions, "abcdefg");
             }
@@ -347,37 +344,44 @@ static partial class TestRegex
             var expr = LRParserRunner<FinalRegex>.Parse(dfa, Tokens(@"/\*[^*]*\*+([^/*][^*]*\*+)\*/")).Expression;
             if (expr.AssertIs<CatExpr>(out var cat1))
             {
-                Debug.Assert(cat1.Expressions.Length is 6);
+                Assert.AreEqual(8, cat1.Expressions.Length);
                 AssertSequenceEqual(cat1.Expressions[..2], "/*");
                 if (cat1.Expressions[2].AssertIs<StarExpr>(out var star1))
                 {
                     if (star1.Expression.AssertIs<ClassExpr>(out var class1))
                     {
-                        Debug.Assert(class1.IsInverse);
+                        Assert.IsTrue(class1.IsInverse);
                         AssertEqualsAnyOrder(class1.Chars, "*");
                     }
                 }
-                if (cat1.Expressions[3].AssertIs<CatExpr>(out var cat2))
+                if (cat1.Expressions[3].AssertIs<PlusExpr>(out var plus1))
                 {
-                    Debug.Assert(cat2.Expressions.Length is 3);
+                    if (plus1.Expression.AssertIs<CharExpr>(out var char1))
+                    {
+                        Assert.AreEqual('*', char1.Char);
+                    }
+                }
+                if (cat1.Expressions[4].AssertIs<CatExpr>(out var cat2))
+                {
+                    Assert.AreEqual(3, cat2.Expressions.Length);
                     if (cat2.Expressions[0].AssertIs<ClassExpr>(out var class2))
                     {
-                        Debug.Assert(class2.IsInverse);
+                        Assert.IsTrue(class2.IsInverse);
                         AssertEqualsAnyOrder(class2.Chars, "/*");
                     }
                     if (cat2.Expressions[1].AssertIs<StarExpr>(out var star2))
                     {
                         if (star2.Expression.AssertIs<ClassExpr>(out var class3))
                         {
-                            Debug.Assert(class3.IsInverse);
+                            Assert.IsTrue(class3.IsInverse);
                             AssertEqualsAnyOrder(class3.Chars, "*");
                         }
                     }
-                    if (cat2.Expressions[2].AssertIs<PlusExpr>(out var plus1))
+                    if (cat2.Expressions[2].AssertIs<PlusExpr>(out var plus2))
                     {
-                        if (plus1.Expression.AssertIs<CharExpr>(out var char1))
+                        if (plus2.Expression.AssertIs<CharExpr>(out var char2))
                         {
-                            Debug.Assert(char1.Char == '*');
+                            Assert.AreEqual('*', char2.Char);
                         }
                     }
                 }
@@ -387,25 +391,14 @@ static partial class TestRegex
     }
     static void AssertSequenceEqual(RegexExpr[] exprs, string expected)
     {
-        Debug.Assert(exprs.Length == expected.Length);
+        Assert.AreEqual(expected.Length, exprs.Length);
         for (int i = 0; i < expected.Length; i++)
         {
             if (exprs[i].AssertIs<CharExpr>(out var ch))
             {
-                Debug.Assert(ch.Char == expected[i]);
+                Assert.AreEqual(expected[i], ch.Char);
             }
         }
-    }
-    static bool AssertIs<T>(this object value, [NotNullWhen(true)] out T? casted)
-    {
-        if (value is T val)
-        {
-            casted = val;
-            return true;
-        }
-        Debugger.Break();
-        casted = default;
-        return false;
     }
     static IEnumerable<ITerminalValue<char>> Tokens([StringSyntax(StringSyntaxAttribute.Regex)] string str)
     {
@@ -431,11 +424,9 @@ static partial class TestRegex
             });
         }
     }
-    static bool AssertEqualsAnyOrder(char[] c1, IEnumerable<char> c2)
+    static void AssertEqualsAnyOrder(char[] c1, IEnumerable<char> c2)
     {
-        bool result = c1.ToHashSet().SetEquals(c2);
-        Debug.Assert(result);
-        return true;
+        Assert.IsTrue(c1.ToHashSet().SetEquals(c2));
     }
     record TerminalValue(char RawChar, Terminal Type) : ITerminalValue<char>
     {
@@ -450,5 +441,22 @@ static partial class TestRegex
         {
             return $"{RawChar} ({Type})";
         }
+    }
+}
+static class TestRegexExtensions
+{
+    public static bool AssertIs<T>(this object value, [NotNullWhen(true)] out T? casted)
+    {
+        if (value is T val)
+        {
+            casted = val;
+            return true;
+        }
+        casted = default;
+        return false;
+    }
+    public static T As<T>(this ISyntaxElementValue ele)
+    {
+        return (T)ele;
     }
 }

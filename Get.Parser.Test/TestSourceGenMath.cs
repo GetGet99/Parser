@@ -1,18 +1,19 @@
 ﻿using Get.Lexer;
+using Microsoft.VisualStudio.TestTools.UnitTesting;
 namespace Get.Parser.Test;
 using static TestSourceGenMath.Terminal;
 using static TestSourceGenMath.NonTerminal;
-using System.Diagnostics;
 using Get.PLShared;
 using Get.RegexMachine;
 using System.Text;
 
+[TestClass]
 [Parser(StartNode)]
 [Precedence(
     Times, Divide, Associativity.Left,
     Plus, Minus, Associativity.Left
 )]
-partial class TestSourceGenMath : ParserBase<TestSourceGenMath.Terminal, TestSourceGenMath.NonTerminal, decimal>
+public partial class TestSourceGenMath : ParserBase<TestSourceGenMath.Terminal, TestSourceGenMath.NonTerminal, decimal>
 {
     public enum Terminal
     {
@@ -50,8 +51,8 @@ partial class TestSourceGenMath : ParserBase<TestSourceGenMath.Terminal, TestSou
     static decimal AbsImpl(decimal val) => Math.Abs(val);
     static T Identity<T>(T val) => val;
 
-    // TESTCODE
-    public static void Test()
+    [TestMethod]
+    public void Test()
     {
         TestSourceGenMath parser = new();
         foreach (var testCase1 in TestCases.Split(NewLine))
@@ -63,10 +64,7 @@ partial class TestSourceGenMath : ParserBase<TestSourceGenMath.Terminal, TestSou
             var ans = decimal.Parse(a[1]);
             var input = GetTerminals(expr);
             var output = parser.Parse(input);
-            if (output != ans)
-            {
-                Debugger.Break();
-            }
+            Assert.AreEqual(ans, output, $"Failed: {expr} = {ans}, got {output}");
         }
     }
     static IEnumerable<ITerminalValue> GetTerminals(string expr)

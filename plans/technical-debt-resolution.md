@@ -1,7 +1,7 @@
 # Technical Debt Analysis & Resolution Plan
 
 Generated: 2026-06-06
-Last Updated: 2026-06-06 (Items 4, 8 completed)
+Last Updated: 2026-06-06 (Items 4, 5 partial, 8 completed)
 
 ---
 
@@ -106,21 +106,30 @@ These implement core algorithms: NFA-to-DFA conversion, LR(1) closure, goto, and
 
 ### 5. Testing Gaps
 
+**Status:** 🟡 **Partially completed** — `Get.Parser.Test` migrated and all 4 tests passing.
+
 **Problem:**
 - Only `Get.RegexMachine.Test` uses a proper test framework (MSTest).
-- `Get.Parser.Test`, `Get.Lexer.Test`, `Get.LangSupport.Test` all use `Debug.Assert` in console apps — not real tests.
+- `Get.Lexer.Test`, `Get.LangSupport.Test` still use `Debug.Assert` in console apps — not real tests.
 - `Get.Lexer/StreamSeeker.Test.cs` and `RotatingBuffer.Test.cs` embed tests in production code via `partial class`.
 - No unit tests for source generators (no snapshot/approval tests).
 - No tests for error recovery in `LRParserRunner.cs`.
 - No tests for `ParserBase.cs` or `LexerBase.cs`.
 
-**Resolution:**
-1. Migrate all test projects to use MSTest (consistent with `Get.RegexMachine.Test`).
-2. Move inline `partial class` tests from production projects to proper test projects.
-3. Add snapshot tests for source generator output using `Verify` or similar.
-4. Add targeted tests for parse error recovery paths.
+**Completed (2026-06-06):**
+1. `Get.Parser.Test` converted from console app → MSTest framework: `Get.Parser.Test.csproj` updated with MSTest SDK packages, `Program.cs` cleared (was the console entry point), all 7 test files rewritten with `[TestClass]`/`[TestMethod]` attributes and MSTest `Assert`.
+2. Fixed `TestRegex.Test` DFA grammar: added `Character → Star`/`Character → Plus` rules so operator characters work as literals inside `[...]` character classes. Resolved resulting shift-reduce conflict by adding `Star`/`Plus` to the precedence list and setting `PrecedenceTerminal: Concatenation` on `Expr → Primary`.
+3. Updated the C-comment regex AST assertion (`/\*[^*]*\*+([^/*][^*]*\*+)\*/`) — previously the test asserted a truncated 6-element parse (since `*` inside `[^*]` was unreachable); now correctly asserts the full 8-element parse.
+4. All 4 `Get.Parser.Test` tests pass; all 47 `Get.RegexMachine.Test` tests still pass.
 
-**Effort:** Large (10-15+ hours). This is ongoing work. Start with `Get.Parser.Test` migration and go from there.
+**Remaining:**
+1. Migrate `Get.Lexer.Test` (console app → MSTest).
+2. Migrate `Get.LangSupport.Test` (console app → MSTest).
+3. Move inline `partial class` tests from production projects to proper test projects.
+4. Add snapshot tests for source generator output.
+5. Add parse error recovery tests.
+
+**Effort:** Large (10-15+ hours remaining). Continue with `Get.Lexer.Test` migration next.
 
 ---
 
@@ -302,7 +311,7 @@ Made `CreateEmptyNFAState` a property with private setter. Added `Parse(string, 
 |-------|-------|-------------|--------|
 | **Phase 1 — Quick wins** | 3 (dead code), 6 (dead files), 7 (string perf), 11 (debug code), 13 (naming typo), 15 (PolySharp) | ~5-7 hours | ✅ **Completed** |
 | **Phase 2 — Core refactoring** | 1 (infra dedup ✅), 2 (ParserGenerator/Analyzer dedup ✅), 4 (AI code tests ✅), 8 (goto removal ✅), 9 (EOF handling ✅), 12 (thread safety ✅) | ~0 hours remaining | ✅ **Completed** |
-| **Phase 3 — Testing overhaul** | 5 (test framework migration, new tests), 14 (Unicode support) | ~15-20 hours | ⏳ Not started |
+| **Phase 3 — Testing overhaul** | 5 (test framework migration — Get.Parser.Test ✅, new tests), 14 (Unicode support) | ~10-15 hours remaining | 🟡 In progress (Get.Parser.Test done) |
 | **Phase 4 — Polish** | 10 (target framework), 13 (remaining naming), 16 (Position format), 17 (XML docs) | ~6-8 hours | ⏳ Not started |
 | **Total** | | **~29-43 hours remaining** | |
 
@@ -321,3 +330,4 @@ These safe, mechanical changes have been completed:
 7. ✅ Remove `#if DEBUG` timing code from `AttributeBaseGenerator.cs` — 3 copies fully cleaned
 8. ✅ Eliminate commented-out code blocks — ParserGenerator.cs, LRParserDFAGen.cs, Extension.cs (3 copies)
 9. ✅ (Bonus) Restored `FullType.cs` — needed after SyntaxCreator deletion, added to both source generators
+10. ✅ Migrated `Get.Parser.Test` from console app → MSTest — 4/4 tests passing, fixed `*`-in-character-class grammar bug

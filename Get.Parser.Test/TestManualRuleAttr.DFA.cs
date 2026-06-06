@@ -9,7 +9,7 @@ using System.Xml.Linq;
 
 namespace Get.Parser.Test;
 
-static partial class TestManualRuleAttr
+partial class TestManualRuleAttr
 {
     static ILRParserDFA GetDFA()
     {

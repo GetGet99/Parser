@@ -4,7 +4,7 @@ using System.Collections;
 
 namespace Get.Parser.Test
 {
-    static partial class TestRegex
+    public partial class TestRegex
     {
         static ILRParserDFA GetDFA()
         {
@@ -17,7 +17,8 @@ namespace Get.Parser.Test
                     x => new FinalRegex(new CatExpr([]))), // let's reuse CatExpr and say we cat a list of "nothing"
                 
                 new CFGRule(NonTerminal.Expr, [c(NonTerminal.Primary)],
-                    x => x[0].As<Primary>().Expression),
+                    x => x[0].As<Primary>().Expression,
+                    PrecedenceTerminal: c(Terminal.Concatenation)),
 
                 // ()
                 new CFGRule(NonTerminal.Primary, [c(Terminal.OpenBracket), c(Terminal.CloseBracket)],
@@ -70,6 +71,12 @@ namespace Get.Parser.Test
                 select
                     new CFGRule(NonTerminal.NonClassCharacter, [c(term)],
                     x => new NonClassCharacter(((ITerminalValue<char>)x[0]).Value)),
+                // terminals that can appear as literals inside [...] (operator chars)
+                ..
+                from term in (IEnumerable<Terminal>)[Terminal.Star, Terminal.Plus]
+                select
+                    new CFGRule(NonTerminal.Character, [c(term)],
+                    x => new Character(((ITerminalValue<char>)x[0]).Value)),
 
                 new CFGRule(NonTerminal.Primary,
                 [c(Terminal.OpenSquareBracket), c(NonTerminal.Classes), c(Terminal.CloseSquareBracket)],
@@ -122,6 +129,8 @@ namespace Get.Parser.Test
             ];
             var dfa = gen.CreateDFA(rules, c(NonTerminal.FinalRegex), precedenceList: [
                 ([c(Terminal.Alternation)], Associativity.Left),
+                ([c(Terminal.Star)], Associativity.Left),
+                ([c(Terminal.Plus)], Associativity.Left),
                 ([c(Terminal.Concatenation)], Associativity.Left),
             ]);
             return dfa;
@@ -317,10 +326,6 @@ namespace Get.Parser.Test
             {
                 return $"{Target.Type} -> {(Expressions.Count > 0 ? string.Join(' ', Expressions) : "<empty>")}";
             }
-        }
-        static T As<T>(this ISyntaxElementValue ele)
-        {
-            return (T)ele;
         }
     }
 }
