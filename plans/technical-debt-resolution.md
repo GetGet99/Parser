@@ -47,14 +47,19 @@ Also `TestUtils.cs` is duplicated in `Get.Lexer/` and `Get.Lexer.SourceGenerator
 
 ### 2. Code Duplication — ParserGenerator.cs vs ParserAnalyzer.cs
 
+**Status:** ✅ **Completed** — 2026-06-06
+
 **Problem:** `Get.Parser.SourceGenerator/ParserGenerator.cs` (746 lines) and `ParserAnalyzer.cs` (713 lines) are ~80% identical — same structure, same local functions, same commented-out diagnostics. `ParserConflictAnalyzer.cs` is a third variant.
 
 **Resolution:**
-1. Extract shared algorithm logic into an abstract base class (e.g., `ParserGeneratorBase`).
-2. The base handles the common visit/generation logic; derived classes implement `Generator` vs `Analyzer` specific output (emit source vs report diagnostics).
-3. The conflict analyzer is already somewhat separate but still shares patterns.
+1. Created `ParserBaseHelper.cs` — a static helper class with 6 shared methods extracting the common logic: guard check, variable setup, Pass 1 type collection (via `Func<ISymbol, ITypeSymbol?>` callbacks to avoid generated wrapper type coupling), `ConstantParameterToString`, and core precedence parsing.
+2. Refactored `ParserGenerator.cs` (636→565 lines, -71): removed `NonLocalizableString` (unused dead code), removed duplicate static parser fields, removed local `ConstantParameterToString`/`Error` functions, replaced `goto exit` with try-catch, simplified `OnPointVisit`.
+3. Refactored `ParserAnalyzer.cs` (712→665 lines, -47): removed duplicate static parser fields, removed local `ConstantParameterToString`, removed unused `StringBuilder sb` + `goto exit`, simplified `OnPointVisit`.
+4. Net reduction: ~118 lines of duplicate code eliminated. Build succeeded with 0 warnings/0 errors.
+5. Shared `RuleAttrSyntaxParser` and `PrecedenceAttrSyntaxParser` instances now live in the helper class.
+6. The conflict analyzer (`ParserConflictAnalyzer.cs`) still shares some patterns (notably Pass 1 type collection) but remains separate.
 
-**Effort:** Medium (4-6 hours). Requires careful refactoring to avoid breaking the analyzer/generator contract. Needs thorough testing.
+**Effort:** Medium (4-6 hours).
 
 ---
 
@@ -287,10 +292,10 @@ Made `CreateEmptyNFAState` a property with private setter. Added `Parse(string, 
 | Phase | Items | Est. Effort | Status |
 |-------|-------|-------------|--------|
 | **Phase 1 — Quick wins** | 3 (dead code), 6 (dead files), 7 (string perf), 11 (debug code), 13 (naming typo), 15 (PolySharp) | ~5-7 hours | ✅ **Completed** |
-| **Phase 2 — Core refactoring** | 1 (infra dedup ✅), 2 (ParserGenerator/Analyzer dedup), 4 (AI code tests ✅, ~1h remaining for fuzz), 8 (goto removal), 9 (EOF handling ✅), 12 (thread safety ✅) | ~10-14 hours remaining | ⏳ In progress |
+| **Phase 2 — Core refactoring** | 1 (infra dedup ✅), 2 (ParserGenerator/Analyzer dedup ✅), 4 (AI code tests ✅, ~1h remaining for fuzz), 8 (goto removal), 9 (EOF handling ✅), 12 (thread safety ✅) | ~6-10 hours remaining | ⏳ In progress |
 | **Phase 3 — Testing overhaul** | 5 (test framework migration, new tests), 14 (Unicode support) | ~15-20 hours | ⏳ Not started |
 | **Phase 4 — Polish** | 10 (target framework), 13 (remaining naming), 16 (Position format), 17 (XML docs) | ~6-8 hours | ⏳ Not started |
-| **Total** | | **~46-63 hours** | |
+| **Total** | | **~42-59 hours** | |
 
 ---
 
