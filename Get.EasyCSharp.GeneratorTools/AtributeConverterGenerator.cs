@@ -114,7 +114,7 @@ partial class AtributeConverterGenerator : GeneratorBase<ClassAttributeSyntaxRec
                     return sym;
 
             }
-            var members = (from x in Type.GetMemeberRecursiveBaseType()
+            var members = (from x in Type.GetMemberRecursiveBaseType()
                            where !(x.Name is nameof(Attribute.TypeId) && x.ContainingType.Equals(AttributeSymbol, SymbolEqualityComparer.Default))
                            where !x.IsImplicitlyDeclared && x.DeclaredAccessibility == Accessibility.Public && x.Kind is SymbolKind.Field or SymbolKind.Property select x).ToArray();
             var TypeWrapper = StructName ?? $"{Type.Name}Warpper";

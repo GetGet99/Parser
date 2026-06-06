@@ -93,9 +93,6 @@ static class Extension
     );
     public static string FullName(this ITypeSymbol Symbol, bool NullableReferenceType = false)
     {
-        //if (Symbol.ToString().Contains('.'))
-        //    return $"global::{Symbol.ToDisplayString(full)}";
-        //else
         NullableReferenceType = NullableReferenceType || Symbol.NullableAnnotation == NullableAnnotation.Annotated;
         if (NullableReferenceType && !Symbol.IsValueType)
             return Symbol.FullNameWithoutAnnotation() + "?";
@@ -125,13 +122,13 @@ static class Extension
         }
         return result;
     }
-    public static IEnumerable<ISymbol> GetMemeberRecursiveBaseType(this ITypeSymbol? Type)
+    public static IEnumerable<ISymbol> GetMemberRecursiveBaseType(this ITypeSymbol? Type)
     {
         if (Type is null) yield break;
 
         foreach (var member in Type.GetMembers())
             yield return member;
-        foreach (var member in Type.BaseType.GetMemeberRecursiveBaseType())
+        foreach (var member in Type.BaseType.GetMemberRecursiveBaseType())
             yield return member;
     }
     public static bool IsSubclassFrom(this ITypeSymbol? Type, ITypeSymbol? PotentialBaseType)
@@ -144,10 +141,6 @@ static class Extension
     {
         return Type?.Equals(PotentialBaseType, SymbolEqualityComparer.Default) ?? false;
     }
-    //public static T GetConstructor<T>(this AttributeData attribute, int index, T? defaultValue = default)
-    //{
-    //var attr = attribute.
-    //}
     public static IncrementalValueProvider<TOut> Select<TIn, TOut>(this IncrementalValueProvider<TIn> valueProvider, Func<TIn, TOut> func)
     {
         return valueProvider.Select((x, _) => func(x));
@@ -156,10 +149,6 @@ static class Extension
     {
         return valueProvider.SelectMany((x, _) => func(x));
     }
-    //public static IncrementalValueProvider<TIn> Where<TIn>(this IncrementalValueProvider<TIn> valueProvider, Func<TIn, bool> func)
-    //{
-    //    return valueProvider.Where(func);
-    //}
     public static IEnumerable<T> SkipAtIndex<T>(this T[] Items, int index)
     {
         for (var i = 0; i < Items.Length; i++)

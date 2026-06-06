@@ -96,36 +96,6 @@ public class LRParserDFAGen(IEqualityComparer<INonTerminal> nontermComparer, IEq
                 // no reductions
                 continue;
             }
-            //else if (possibleReductions.Count is 1)
-            //{
-            //    foreach (var term in possibleReductions[0].ReduceOn)
-            //    {
-            //        if (term is not null)
-            //        {
-            //            if (currentDFA.Actions.ContainsKey(term))
-            //            {
-            //                throw new LRConflictException()
-            //                {
-            //                    // TO DO: specify the other action that is conflict from currentDFA.Actions
-            //                    ConflictedItems = [possibleReductions[0]],
-            //                    ConflictType = ConflictType.ReduceReduce
-            //                };
-            //            }
-            //            currentDFA.Actions[term] = new LRDFAReduce(possibleReductions[0].OriginalCFGRule);
-            //            ShiftReduceConflictCheck(currentDFA, term, precedenceList);
-            //        }
-            //        else
-            //            currentDFA.OnEndSymbol = new LRDFAReduce(possibleReductions[0].OriginalCFGRule);
-            //    }
-            //}
-            //else
-            //{
-            //    throw new LRConflictException()
-            //    {
-            //        ConflictedItems = possibleReductions,
-            //        ConflictType = ConflictType.ReduceReduce
-            //    };
-            //}
             // Combine all reduce-on lookahead symbols across items
             var lookaheadToItem = new Dictionary<ITerminal, LRItem>();
             LRItem? eofReductionItem = null;
@@ -220,13 +190,6 @@ public class LRParserDFAGen(IEqualityComparer<INonTerminal> nontermComparer, IEq
             int PrecedenceOf(ITerminal? terminal)
             {
                 if (terminal is null) return -1;
-                // old code when i got the concept wrong
-                //// for something like minus vs unary minus
-                //if (terminal is ITerminalWithCustomPrecedence t2)
-                //{
-                //    // we do the search for another terminal instead
-                //    terminal = t2.PrecedenceTerminal;
-                //}
                 return Array.FindIndex(precedenceList, x => x.Terminals.Contains(terminal, termComparer));
             }
             ITerminal? LastTerm(IReadOnlyList<ISyntaxElement> elements)

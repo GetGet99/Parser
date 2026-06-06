@@ -1,5 +1,4 @@
 using Get.EasyCSharp.GeneratorTools;
-using Get.EasyCSharp.GeneratorTools.SyntaxCreator.Members;
 using Get.Lexer;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
@@ -238,11 +237,7 @@ partial class ParserGenerator : AttributeBaseGenerator<ParserAttribute, ParserGe
                             }
                             else
                             {
-                                //Error(
-                                //    ParserRuleNoTypeParam,
-                                //    $"({(ele.Raw.IsTerminal ? "Terminal" : "NonTerminal")}){ele.Raw.RawEnum}",
-                                //    ele.AsArg
-                                //);
+
                                 reduceArgs.AppendLine(
                                     $"""
                                     // the given token does not have a type
@@ -253,32 +248,14 @@ partial class ParserGenerator : AttributeBaseGenerator<ParserAttribute, ParserGe
                         }
                         else if (ele.AsArg is ParserFuncsArgument pfa)
                         {
-                            //Error(
-                            //    ParserRuleNoTypeParam,
-                            //    pfa.ArgName.ToString(),
-                            //    red switch
-                            //    {
-                            //        ReduceMethod rd => rd.Name,
-                            //        ReduceConstructor rd => $"(constructor of {rd.Type_.Name})",
-                            //        _ => throw new InvalidCastException()
-                            //    }
-                            //);
+
                         }
                     }
                     foreach (var opt in constParams)
                     {
                         if (opt.ArgumentName is ParserFuncsArgument pfa)
                         {
-                            //Error(
-                            //    ParserRuleNoTypeParam,
-                            //    pfa.ArgName.ToString(),
-                            //    red switch
-                            //    {
-                            //        ReduceMethod rd => rd.Name,
-                            //        ReduceConstructor rd => $"(constructor of {rd.Type_.Name})",
-                            //        _ => throw new InvalidCastException()
-                            //    }
-                            //);
+
                             continue;
                         }
                         else if (opt.ArgumentName is StringArgument s)
@@ -339,11 +316,7 @@ partial class ParserGenerator : AttributeBaseGenerator<ParserAttribute, ParserGe
                                 reference: x
                             );
                             """;
-                            
-                        //Error(
-                        //    ParserRuleNoTypeReturn,
-                        //    reduceParserFunc.ParserFunc.ToString()
-                        //);
+
                         break;
                     }
                     string? list = null;
@@ -359,11 +332,7 @@ partial class ParserGenerator : AttributeBaseGenerator<ParserAttribute, ParserGe
                                 {
                                     if (pfa.ArgName is not ParserFuncArgs.Value)
                                     {
-                                        //Error(
-                                        //    ParserFuncInvalidArgs,
-                                        //    pfa.ArgName.ToString(),
-                                        //    "VALUE"
-                                        //);
+
                                         continue;
                                     }
                                     var type = (ele.Raw.IsTerminal ? TerminalTypes : NonTerminalTypes)[ele.Raw.RawEnum];
@@ -375,29 +344,18 @@ partial class ParserGenerator : AttributeBaseGenerator<ParserAttribute, ParserGe
                                         }
                                         else
                                         {
-                                            //Error(
-                                            //    ParserFuncDuplicateArgs,
-                                            //    pfa.ArgName
-                                            //);
+
                                         }
                                     }
                                     else
                                     {
-                                        //Error(
-                                        //    ParserRuleNoTypeParam,
-                                        //    $"({(ele.Raw.IsTerminal ? "Terminal" : "NonTerminal")}){ele.Raw.RawEnum}",
-                                        //    pfa.ArgName.ToString()
-                                        //);
+
                                         val = $"/* the given token does not have a type */ default";
                                     }
                                 }
                                 else if (ele.AsArg is StringArgument s)
                                 {
-                                    //Error(
-                                    //    ParserFuncInvalidArgs,
-                                    //    s.ArgName,
-                                    //    reduceParserFunc.ParserFunc.ToString()
-                                    //);
+
                                 }
                                 else
                                 {
@@ -410,38 +368,24 @@ partial class ParserGenerator : AttributeBaseGenerator<ParserAttribute, ParserGe
                                 {
                                     if (pfa.ArgName is not ParserFuncArgs.Value)
                                     {
-                                        //Error(
-                                        //    ParserFuncInvalidArgs,
-                                        //    pfa.ArgName.ToString(),
-                                        //    "VALUE"
-                                        //);
+
                                         continue;
                                     }
                                     if (val is null)
                                         val = ConstantParameterToString(opt);
                                     else
                                     {
-                                        //Error(
-                                        //    ParserFuncDuplicateArgs,
-                                        //    pfa.ArgName
-                                        //);
+
                                     }
                                 }
                                 else if (opt.ArgumentName is StringArgument s)
                                 {
-                                    //Error(
-                                    //    ParserFuncInvalidArgs,
-                                    //    s.ArgName,
-                                    //    "VALUE"
-                                    //);
+
                                 }
                             }
                             if (val is null)
                             {
-                                //Error(
-                                //    ParserFuncMissingArgs,
-                                //    "VALUE"
-                                //);
+
                                 creation = "return default;";
                                 break;
                             }
@@ -470,19 +414,11 @@ partial class ParserGenerator : AttributeBaseGenerator<ParserAttribute, ParserGe
                                 if (ele.AsArg is null) continue;
                                 if (ele.AsArg is ParserFuncsArgument pfa)
                                 {
-                                    //Error(
-                                    //    ParserFuncInvalidArgs,
-                                    //    pfa.ArgName.ToString(),
-                                    //    "no argument"
-                                    //);
+
                                 }
                                 else if (ele.AsArg is StringArgument s)
                                 {
-                                    //Error(
-                                    //    ParserFuncInvalidArgs,
-                                    //    s.ArgName,
-                                    //    "no argument"
-                                    //);
+
                                 }
                                 else
                                 {
@@ -495,21 +431,13 @@ partial class ParserGenerator : AttributeBaseGenerator<ParserAttribute, ParserGe
                                 {
                                     if (pfa.ArgName is not ParserFuncArgs.Value)
                                     {
-                                        //Error(
-                                        //    ParserFuncInvalidArgs,
-                                        //    pfa.ArgName.ToString(),
-                                        //    "no argument"
-                                        //);
+
                                         continue;
                                     }
                                 }
                                 else if (opt.ArgumentName is StringArgument s)
                                 {
-                                    //Error(
-                                    //    ParserFuncInvalidArgs,
-                                    //    s.ArgName,
-                                    //    "no argument"
-                                    //);
+
                                 }
                             }
                             creation = $"""
@@ -528,11 +456,7 @@ partial class ParserGenerator : AttributeBaseGenerator<ParserAttribute, ParserGe
                                 {
                                     if (pfa.ArgName is not (ParserFuncArgs.Value or ParserFuncArgs.List))
                                     {
-                                        //Error(
-                                        //    ParserFuncInvalidArgs,
-                                        //    pfa.ArgName.ToString(),
-                                        //    "VALUE or LIST"
-                                        //);
+
                                         continue;
                                     }
                                     var type = (ele.Raw.IsTerminal ? TerminalTypes : NonTerminalTypes)[ele.Raw.RawEnum];
@@ -546,10 +470,7 @@ partial class ParserGenerator : AttributeBaseGenerator<ParserAttribute, ParserGe
                                             }
                                             else
                                             {
-                                                //Error(
-                                                //    ParserFuncDuplicateArgs,
-                                                //    pfa.ArgName
-                                                //);
+
                                             }
                                         }
                                         else if (pfa.ArgName is ParserFuncArgs.List)
@@ -560,30 +481,19 @@ partial class ParserGenerator : AttributeBaseGenerator<ParserAttribute, ParserGe
                                             }
                                             else
                                             {
-                                                //Error(
-                                                //    ParserFuncDuplicateArgs,
-                                                //    pfa.ArgName
-                                                //);
+
                                             }
                                         }
                                     }
                                     else
                                     {
-                                        //Error(
-                                        //    ParserRuleNoTypeParam,
-                                        //    $"({(ele.Raw.IsTerminal ? "Terminal" : "NonTerminal")}){ele.Raw.RawEnum}",
-                                        //    pfa.ArgName.ToString()
-                                        //);
+
                                         val = $"/* the given token does not have a type */ default";
                                     }
                                 }
                                 else if (ele.AsArg is StringArgument s)
                                 {
-                                    //Error(
-                                    //    ParserFuncInvalidArgs,
-                                    //    s.ArgName,
-                                    //    reduceParserFunc.ParserFunc.ToString()
-                                    //);
+
                                 }
                                 else
                                 {
@@ -596,11 +506,7 @@ partial class ParserGenerator : AttributeBaseGenerator<ParserAttribute, ParserGe
                                 {
                                     if (pfa.ArgName is not (ParserFuncArgs.Value or ParserFuncArgs.List))
                                     {
-                                        //Error(
-                                        //    ParserFuncInvalidArgs,
-                                        //    pfa.ArgName.ToString(),
-                                        //    "VALUE or LIST"
-                                        //);
+
                                         continue;
                                     }
                                     if (pfa.ArgName is ParserFuncArgs.Value)
@@ -609,10 +515,7 @@ partial class ParserGenerator : AttributeBaseGenerator<ParserAttribute, ParserGe
                                             val = ConstantParameterToString(opt);
                                         else
                                         {
-                                            //Error(
-                                            //    ParserFuncDuplicateArgs,
-                                            //    pfa.ArgName.ToString()
-                                            //);
+
                                         }
                                     }
                                     else if (pfa.ArgName is ParserFuncArgs.List)
@@ -621,10 +524,7 @@ partial class ParserGenerator : AttributeBaseGenerator<ParserAttribute, ParserGe
                                             list = ConstantParameterToString(opt);
                                         else
                                         {
-                                            //Error(
-                                            //    ParserFuncDuplicateArgs,
-                                            //    pfa.ArgName.ToString()
-                                            //);
+
                                         }
                                     }
                                     else
@@ -634,28 +534,18 @@ partial class ParserGenerator : AttributeBaseGenerator<ParserAttribute, ParserGe
                                 }
                                 else if (opt.ArgumentName is StringArgument s)
                                 {
-                                    //Error(
-                                    //    ParserFuncInvalidArgs,
-                                    //    s.ArgName,
-                                    //    "VALUE or LIST"
-                                    //);
+
                                 }
                             }
                             if (val is null)
                             {
-                                //Error(
-                                //    ParserFuncMissingArgs,
-                                //    "VALUE"
-                                //);
+
                                 creation = "return default;";
                                 break;
                             }
                             if (list is null)
                             {
-                                //Error(
-                                //    ParserFuncMissingArgs,
-                                //    "LIST"
-                                //);
+
                                 creation = "return default;";
                                 break;
                             }

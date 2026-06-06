@@ -1,9 +1,6 @@
 ﻿using Get.EasyCSharp.GeneratorTools;
-using Get.EasyCSharp.GeneratorTools.SyntaxCreator.Members;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
-using System.Data;
-using System.Linq;
 using System.Text;
 
 namespace Get.Lexer.SourceGenerator;

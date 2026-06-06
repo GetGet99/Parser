@@ -1,5 +1,5 @@
 ﻿using Get.PLShared;
-using System.Security.Cryptography;
+using System.Text;
 namespace Get.RegexMachine;
 
 public static class RegexRunner<T> where T : class
@@ -9,11 +9,11 @@ public static class RegexRunner<T> where T : class
         var currentDFAState = startDFAState;
         RegexCompiler<T>.DFAState? lastSuccessfulState = null;
         int backtrackPosition = 0;
-        string matchedText = "";
+        var matchedTextBuilder = new StringBuilder();
         while (enumerator.MoveNext())
         {
             var c = enumerator.Current;
-            matchedText += c;
+            matchedTextBuilder.Append(c);
             if (currentDFAState.Transitions.TryGetValue(c, out var nextState))
             {
                 if (nextState.Value != null)
@@ -27,10 +27,12 @@ public static class RegexRunner<T> where T : class
                 break;
             }
         }
+        var matchedText = matchedTextBuilder.ToString();
         if (lastSuccessfulState != null)
         {
-            matchedText = matchedText[..^(enumerator.CurrentPosition - backtrackPosition)];
-            enumerator.Reverse(enumerator.CurrentPosition - backtrackPosition);
+            var backtrackLength = enumerator.CurrentPosition - backtrackPosition;
+            matchedText = matchedText[..^(backtrackLength)];
+            enumerator.Reverse(backtrackLength);
         }
         // If we reached a final state, return its value
         if (lastSuccessfulState?.Value != null)
@@ -52,7 +54,7 @@ public static class RegexRunner<T> where T : class
         var currentDFAState = startDFAState;
         RegexCompiler<T>.DFAState? lastSuccessfulState = null;
         int backtrackPosition = enumerator.CurrentPosition;
-        string matchedText = "";
+        var matchedTextBuilder = new StringBuilder();
         int lengthCheckpoint = 0;
         Position Start = new(0, -1), End = new(0, -1);
         while (enumerator.MoveNext())
@@ -61,12 +63,12 @@ public static class RegexRunner<T> where T : class
             var c = enumerator.Current;
             if (currentDFAState.Transitions.TryGetValue(c, out var nextState))
             {
-                matchedText += c;
+                matchedTextBuilder.Append(c);
                 if (nextState.Value != null)
                 {
                     lastSuccessfulState = nextState;
                     backtrackPosition = enumerator.CurrentPosition;
-                    lengthCheckpoint = matchedText.Length;
+                    lengthCheckpoint = matchedTextBuilder.Length;
                     End = new(enumerator.LineNo, enumerator.CharNo);
                 }
                 currentDFAState = nextState;
@@ -75,6 +77,7 @@ public static class RegexRunner<T> where T : class
                 break;
             }
         }
+        var matchedText = matchedTextBuilder.ToString();
         if (lastSuccessfulState != null)
         {
             matchedText = matchedText[..lengthCheckpoint];

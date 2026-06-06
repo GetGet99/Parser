@@ -10,7 +10,6 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="$(MSBuildThisFileDirectory)BacktrackableIterator.cs" />
-    <Compile Include="$(MSBuildThisFileDirectory)Get.Lexer.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)IBacktrackableIterator.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)ISeekable.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)ITextSeekable.cs" />
@@ -19,6 +18,5 @@
     <Compile Include="$(MSBuildThisFileDirectory)RegexCompiler.NFA.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)RegexParser.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)RegexRunner.cs" />
-    <Compile Include="$(MSBuildThisFileDirectory)RegexSourceCodeGeneration.cs" />
   </ItemGroup>
 </Project>
