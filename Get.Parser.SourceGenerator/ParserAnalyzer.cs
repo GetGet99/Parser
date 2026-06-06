@@ -17,10 +17,6 @@ namespace Get.Parser.SourceGenerator;
 [Microsoft.CodeAnalysis.Diagnostics.DiagnosticAnalyzer(LanguageNames.CSharp)]
 partial class ParserAnalyzer() : AttributeBaseAnalyzer<ParserAttribute, ParserAnalyzer.ParserAttributeWarpper, TypeDeclarationSyntax, INamedTypeSymbol>(SyntaxKind.ClassDeclaration)
 {
-    static RuleAttrSyntaxParser RuleAttrSyntaxParser { get; } = new RuleAttrSyntaxParser();
-    static PrecedenceAttrSyntaxParser PrecedenceAttrSyntaxParser { get; } = new PrecedenceAttrSyntaxParser();
-
-
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics => ImmutableArray.Create(
         NotParserBase,
         ParserRuleSyntaxErrorBase,
@@ -105,12 +101,7 @@ partial class ParserAnalyzer() : AttributeBaseAnalyzer<ParserAttribute, ParserAn
     );
     protected override void OnPointVisit(OnPointVisitArguments args)
     {
-        if (!(args.Symbol.BaseType?.ToString().StartsWith("Get.Parser.ParserBase") ?? false))
-        {
-            args.ReportDiagnostic(Diagnostic.Create(NotParserBase, args.SyntaxNode.BaseList?.GetLocation() ?? args.SyntaxNode.Identifier.GetLocation()));
-            return;
-        }
-        if (args.Symbol.BaseType.TypeArguments.Length != 3)
+        if (!ParserBaseHelper.TryGetParserBaseTypes(args.Symbol, out _, out _))
         {
             args.ReportDiagnostic(Diagnostic.Create(NotParserBase, args.SyntaxNode.BaseList?.GetLocation() ?? args.SyntaxNode.Identifier.GetLocation()));
             return;
@@ -120,85 +111,43 @@ partial class ParserAnalyzer() : AttributeBaseAnalyzer<ParserAttribute, ParserAn
     protected void OnPointVisit2(OnPointVisitArguments args)
     {
         var genContext = args.Context;
-        var lexerSymbol = args.Symbol;
         var thisType = args.Symbol;
         var baseType = args.Symbol.BaseType!;
-        var terminalType = baseType.TypeArguments[0];
-        var nonTerminalType = baseType.TypeArguments[1];
-        var associativityType = genContext.SemanticModel.Compilation.GetTypeByMetadataName(typeof(Associativity).FullName);
-        var keywordType = genContext.SemanticModel.Compilation.GetTypeByMetadataName(typeof(ParserSourceGeneratorKeywords).FullName)!;
-        var nonTerminalFT = new FullType(nonTerminalType);
-        var terminalFT = new FullType(terminalType);
+        var (terminalType, nonTerminalType, associativityType, keywordType, terminalFT, nonTerminalFT) =
+            ParserBaseHelper.SetupParserVariables(genContext.SemanticModel, baseType);
 
         // PASS 1: COLLECT TYPE INFORMATION
         Dictionary<object, ITypeSymbol?> TerminalTypes = [];
         Dictionary<object, ITypeSymbol?> NonTerminalTypes = [];
-        if (args.AttributeDatas[0].Wrapper.UseGetLexerTypeInformation)
+        ParserBaseHelper.CollectTerminalTypes(terminalType, TerminalTypes, t =>
         {
-            foreach (var t in terminalType.GetMembers())
+            if (args.AttributeDatas[0].Wrapper.UseGetLexerTypeInformation)
             {
-                if (t is IFieldSymbol fieldSymbol)
-                {
-                    var value = fieldSymbol.ConstantValue;
-                    if (value is null) continue;
-                    var attrs = t.GetAttributes();
-                    var type = AttributeHelper.TryGetAttributeAnyGeneric<Lexer.TypeAttribute<TempType>, LexerTypeAttributeWrapper>(genContext.SemanticModel, t, LexerTypeAttrGen);
-                    if (type.HasValue)
-                        // on lexer, there is type checking
-                        // but we can just take the type here as
-                        // the user can see the error from the lexer side
-                        TerminalTypes[value] = type.Value.Serialized.T;
-                    else
-                    {
-                        // retry on regex attribute
-                        var typedRegexes = AttributeHelper.GetAttributesAnyGeneric<RegexAttribute<TempType>, RegexAttributeWarpper>(genContext.SemanticModel, t, (attrdata, compilation) =>
-                        {
-                            if (attrdata.AttributeClass?.IsGenericType ?? false)
-                                return AttributeDataToRegexAttribute(attrdata, compilation);
-                            return null;
-                        });
-                        var types = typedRegexes.Select(x => x.Serialized.T).Distinct(SymbolEqualityComparer.Default).ToList();
-                        if (types.Count is 1)
-                            TerminalTypes[value] = (ITypeSymbol)types[0]!;
-                        else
-                            // the type is ambiguous, lexer won't allow it
-                            // but we will just say it has no type here
-                            TerminalTypes[value] = null;
-                    }
-                }
-            }
-        }
-        else
-        {
-            foreach (var t in terminalType.GetMembers())
-            {
-                if (t is IFieldSymbol fieldSymbol)
-                {
-                    var value = fieldSymbol.ConstantValue;
-                    if (value is null) continue;
-                    var attrs = t.GetAttributes();
-                    var type = AttributeHelper.TryGetAttributeAnyGeneric<TypeAttribute<TempType>, TypeAttributeWarpper>(genContext.SemanticModel, t, AttributeDataToTypeAttribute);
-                    if (type.HasValue)
-                        TerminalTypes[value] = type.Value.Serialized.T;
-                    else
-                        TerminalTypes[value] = null;
-                }
-            }
-        }
-        foreach (var nt in nonTerminalType.GetMembers())
-        {
-            if (nt is IFieldSymbol fieldSymbol)
-            {
-                var value = fieldSymbol.ConstantValue;
-                if (value is null) continue;
-                var attrs = nt.GetAttributes();
-                var type = AttributeHelper.TryGetAttributeAnyGeneric<TypeAttribute<TempType>, TypeAttributeWarpper>(genContext.SemanticModel, nt, AttributeDataToTypeAttribute);
+                var type = AttributeHelper.TryGetAttributeAnyGeneric<Lexer.TypeAttribute<TempType>, LexerTypeAttributeWrapper>(genContext.SemanticModel, t, LexerTypeAttrGen);
                 if (type.HasValue)
-                    NonTerminalTypes[value] = type.Value.Serialized.T;
-                else
-                    NonTerminalTypes[value] = null;
+                    return type.Value.Serialized.T;
+                var typedRegexes = AttributeHelper.GetAttributesAnyGeneric<RegexAttribute<TempType>, RegexAttributeWarpper>(genContext.SemanticModel, t, (attrdata, compilation) =>
+                {
+                    if (attrdata.AttributeClass?.IsGenericType ?? false)
+                        return AttributeDataToRegexAttribute(attrdata, compilation);
+                    return null;
+                });
+                var types = typedRegexes.Select(x => x.Serialized.T).Distinct(SymbolEqualityComparer.Default).ToList();
+                if (types.Count is 1)
+                    return (ITypeSymbol)types[0]!;
+                return null;
             }
-        }
+            else
+            {
+                var type = AttributeHelper.TryGetAttributeAnyGeneric<TypeAttribute<TempType>, TypeAttributeWarpper>(genContext.SemanticModel, t, AttributeDataToTypeAttribute);
+                return type?.Serialized.T;
+            }
+        });
+        ParserBaseHelper.CollectNonTerminalTypes(nonTerminalType, NonTerminalTypes, nt =>
+        {
+            var type = AttributeHelper.TryGetAttributeAnyGeneric<TypeAttribute<TempType>, TypeAttributeWarpper>(genContext.SemanticModel, nt, AttributeDataToTypeAttribute);
+            return type?.Serialized.T;
+        });
         // PASS 2: DO STUFF
         // PRECEDENCE
         List<PrecedenceItem> precedenceList = [];
@@ -206,12 +155,9 @@ partial class ParserAnalyzer() : AttributeBaseAnalyzer<ParserAttribute, ParserAn
         if (pd.HasValue)
         {
             var (raw, _) = pd.Value;
-            var precedenceArgs = raw.ConstructorArguments[0].Values;
-            if (associativityType is null)
-                goto exit;
             try
             {
-                precedenceList = PrecedenceAttrSyntaxParser.Parse(precedenceArgs, terminalType, associativityType);
+                precedenceList = ParserBaseHelper.ParsePrecedenceCore(genContext.SemanticModel, terminalType, associativityType, raw);
             }
             catch (LRParserRuntimeUnexpectedInputException e)
             {
@@ -222,7 +168,6 @@ partial class ParserAnalyzer() : AttributeBaseAnalyzer<ParserAttribute, ParserAn
                     "Unexpected",
                     e.UnexpectedElement
                 ));
-                goto exit;
             }
             catch (LRParserRuntimeUnexpectedEndingException e)
             {
@@ -233,11 +178,8 @@ partial class ParserAnalyzer() : AttributeBaseAnalyzer<ParserAttribute, ParserAn
                     "Expected",
                     $"{string.Join(", ", (object?[])e.ExpectedInputs)} after the last parameter"
                 ));
-                goto exit;
             }
         }
-    exit:
-        StringBuilder sb = new();
 
         foreach (var nt in nonTerminalType.GetMembers())
         {
@@ -251,7 +193,7 @@ partial class ParserAnalyzer() : AttributeBaseAnalyzer<ParserAttribute, ParserAn
                 Rule rule;
                 try
                 {
-                    rule = RuleAttrSyntaxParser.Parse(ruleargs, terminalType, nonTerminalType, keywordType);
+                    rule = ParserBaseHelper.RuleAttrSyntaxParser.Parse(ruleargs, terminalType, nonTerminalType, keywordType);
                 }
                 catch (LRParserRuntimeUnexpectedInputException e)
                 {
@@ -274,24 +216,6 @@ partial class ParserAnalyzer() : AttributeBaseAnalyzer<ParserAttribute, ParserAn
                         $"{string.Join(", ", (object?[])e.ExpectedInputs)} after the last parameter"
                     ));
                     continue;
-                }
-                static string ConstantParameterToString(Option option)
-                {
-                    var (type, value) = option.ConstantParameterValue;
-                    // TODO
-                    if (value is null)
-                        return "null";
-
-                    if (type is { TypeKind: TypeKind.Enum })
-                    {
-                        return $"({new FullType(type)}){value}";
-                    }
-                    return option.ConstantParameterValue.ConstantParameterValue switch
-                    {
-                        bool b => b ? "true" : "false",
-                        null => "null",
-                        var rest => rest.ToString()
-                    };
                 }
                 var nttype = NonTerminalTypes[value];
                 var (eles, constParams, red, ruleprec) = rule;
@@ -370,7 +294,7 @@ partial class ParserAnalyzer() : AttributeBaseAnalyzer<ParserAttribute, ParserAn
                         {
                             reduceArgs.AppendLine(
                                 $"""
-                                {s.ArgName}: {ConstantParameterToString(opt)},
+                                {s.ArgName}: {ParserBaseHelper.ConstantParameterToString(opt)},
                                 """
                             );
                         }
@@ -480,7 +404,7 @@ partial class ParserAnalyzer() : AttributeBaseAnalyzer<ParserAttribute, ParserAn
                                         continue;
                                     }
                                     if (val is null)
-                                        val = ConstantParameterToString(opt);
+                                        val = ParserBaseHelper.ConstantParameterToString(opt);
                                     else
                                     {
                                         Error(
@@ -642,7 +566,7 @@ partial class ParserAnalyzer() : AttributeBaseAnalyzer<ParserAttribute, ParserAn
                                     if (pfa.ArgName is ParserFuncArgs.Value)
                                     {
                                         if (val is null)
-                                            val = ConstantParameterToString(opt);
+                                            val = ParserBaseHelper.ConstantParameterToString(opt);
                                         else
                                         {
                                             Error(
@@ -654,7 +578,7 @@ partial class ParserAnalyzer() : AttributeBaseAnalyzer<ParserAttribute, ParserAn
                                     else if (pfa.ArgName is ParserFuncArgs.List)
                                     {
                                         if (list is null)
-                                            list = ConstantParameterToString(opt);
+                                            list = ParserBaseHelper.ConstantParameterToString(opt);
                                         else
                                         {
                                             Error(

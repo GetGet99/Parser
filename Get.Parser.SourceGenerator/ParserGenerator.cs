@@ -15,110 +15,53 @@ namespace Get.Parser.SourceGenerator;
 [AddAttributeConverter(typeof(PrecedenceAttribute))]
 partial class ParserGenerator : AttributeBaseGenerator<ParserAttribute, ParserGenerator.ParserAttributeWarpper, TypeDeclarationSyntax, INamedTypeSymbol>
 {
-    static RuleAttrSyntaxParser RuleAttrSyntaxParser { get; } = new RuleAttrSyntaxParser();
-    static PrecedenceAttrSyntaxParser PrecedenceAttrSyntaxParser { get; } = new PrecedenceAttrSyntaxParser();
-    class NonLocalizableString(string s) : LocalizableString
-    {
-        public string DiagonosticString { get; } = s;
-        protected override bool AreEqual(object? other) => other is NonLocalizableString l && l.DiagonosticString == DiagonosticString;
-        protected override int GetHash() => DiagonosticString.GetHashCode();
-        protected override string GetText(IFormatProvider? formatProvider) => DiagonosticString;
-    }
     protected override string? OnPointVisit(OnPointVisitArguments args)
     {
-        if (!(args.Symbol.BaseType?.ToString().StartsWith("Get.Parser.ParserBase") ?? false))
-        {
+        if (!ParserBaseHelper.TryGetParserBaseTypes(args.Symbol, out _, out _))
             return null;
-        }
-        if (args.Symbol.BaseType.TypeArguments.Length != 3)
-        {
-            return null;
-        }
         return OnPointVisit2(args).JoinDoubleNewLine();
     }
     protected IEnumerable<string> OnPointVisit2(OnPointVisitArguments args)
     {
         var genContext = args.GenContext;
         var diagnostics = args.Diagnostics;
-        var lexerSymbol = args.Symbol;
         var thisType = args.Symbol;
         var baseType = args.Symbol.BaseType!;
-        var terminalType = baseType.TypeArguments[0];
-        var nonTerminalType = baseType.TypeArguments[1];
-        var associativityType = genContext.SemanticModel.Compilation.GetTypeByMetadataName(typeof(Associativity).FullName);
-        var keywordType = genContext.SemanticModel.Compilation.GetTypeByMetadataName(typeof(ParserSourceGeneratorKeywords).FullName)!;
-        var nonTerminalFT = new FullType(nonTerminalType);
-        var terminalFT = new FullType(terminalType);
+        var (terminalType, nonTerminalType, associativityType, keywordType, terminalFT, nonTerminalFT) =
+            ParserBaseHelper.SetupParserVariables(genContext.SemanticModel, baseType);
 
         // PASS 1: COLLECT TYPE INFORMATION
         Dictionary<object, ITypeSymbol?> TerminalTypes = [];
         Dictionary<object, ITypeSymbol?> NonTerminalTypes = [];
-        if (args.AttributeDatas[0].Wrapper.UseGetLexerTypeInformation)
+        ParserBaseHelper.CollectTerminalTypes(terminalType, TerminalTypes, t =>
         {
-            foreach (var t in terminalType.GetMembers())
+            if (args.AttributeDatas[0].Wrapper.UseGetLexerTypeInformation)
             {
-                if (t is IFieldSymbol fieldSymbol)
-                {
-                    var value = fieldSymbol.ConstantValue;
-                    if (value is null) continue;
-                    var attrs = t.GetAttributes();
-                    var type = AttributeHelper.TryGetAttributeAnyGeneric<Lexer.TypeAttribute<TempType>, LexerTypeAttributeWrapper>(genContext.SemanticModel, t, LexerTypeAttrGen);
-                    if (type.HasValue)
-                        // on lexer, there is type checking
-                        // but we can just take the type here as
-                        // the user can see the error from the lexer side
-                        TerminalTypes[value] = type.Value.Serialized.T;
-                    else
-                    {
-                        // retry on regex attribute
-                        var typedRegexes = AttributeHelper.GetAttributesAnyGeneric<RegexAttribute<TempType>, RegexAttributeWarpper>(genContext.SemanticModel, t, (attrdata, compilation) =>
-                        {
-                            if (attrdata.AttributeClass?.IsGenericType ?? false)
-                                return AttributeDataToRegexAttribute(attrdata, compilation);
-                            return null;
-                        });
-                        var types = typedRegexes.Select(x => x.Serialized.T).Distinct(SymbolEqualityComparer.Default).ToList();
-                        if (types.Count is 1)
-                            TerminalTypes[value] = (ITypeSymbol)types[0]!;
-                        else
-                            // the type is ambiguous, lexer won't allow it
-                            // but we will just say it has no type here
-                            TerminalTypes[value] = null;
-                    }
-                }
-            }
-        }
-        else
-        {
-            foreach (var t in terminalType.GetMembers())
-            {
-                if (t is IFieldSymbol fieldSymbol)
-                {
-                    var value = fieldSymbol.ConstantValue;
-                    if (value is null) continue;
-                    var attrs = t.GetAttributes();
-                    var type = AttributeHelper.TryGetAttributeAnyGeneric<TypeAttribute<TempType>, TypeAttributeWarpper>(genContext.SemanticModel, t, AttributeDataToTypeAttribute);
-                    if (type.HasValue)
-                        TerminalTypes[value] = type.Value.Serialized.T;
-                    else
-                        TerminalTypes[value] = null;
-                }
-            }
-        }
-        foreach (var nt in nonTerminalType.GetMembers())
-        {
-            if (nt is IFieldSymbol fieldSymbol)
-            {
-                var value = fieldSymbol.ConstantValue;
-                if (value is null) continue;
-                var attrs = nt.GetAttributes();
-                var type = AttributeHelper.TryGetAttributeAnyGeneric<TypeAttribute<TempType>, TypeAttributeWarpper>(genContext.SemanticModel, nt, AttributeDataToTypeAttribute);
+                var type = AttributeHelper.TryGetAttributeAnyGeneric<Lexer.TypeAttribute<TempType>, LexerTypeAttributeWrapper>(genContext.SemanticModel, t, LexerTypeAttrGen);
                 if (type.HasValue)
-                    NonTerminalTypes[value] = type.Value.Serialized.T;
-                else
-                    NonTerminalTypes[value] = null;
+                    return type.Value.Serialized.T;
+                var typedRegexes = AttributeHelper.GetAttributesAnyGeneric<RegexAttribute<TempType>, RegexAttributeWarpper>(genContext.SemanticModel, t, (attrdata, compilation) =>
+                {
+                    if (attrdata.AttributeClass?.IsGenericType ?? false)
+                        return AttributeDataToRegexAttribute(attrdata, compilation);
+                    return null;
+                });
+                var types = typedRegexes.Select(x => x.Serialized.T).Distinct(SymbolEqualityComparer.Default).ToList();
+                if (types.Count is 1)
+                    return (ITypeSymbol)types[0]!;
+                return null;
             }
-        }
+            else
+            {
+                var type = AttributeHelper.TryGetAttributeAnyGeneric<TypeAttribute<TempType>, TypeAttributeWarpper>(genContext.SemanticModel, t, AttributeDataToTypeAttribute);
+                return type?.Serialized.T;
+            }
+        });
+        ParserBaseHelper.CollectNonTerminalTypes(nonTerminalType, NonTerminalTypes, nt =>
+        {
+            var type = AttributeHelper.TryGetAttributeAnyGeneric<TypeAttribute<TempType>, TypeAttributeWarpper>(genContext.SemanticModel, nt, AttributeDataToTypeAttribute);
+            return type?.Serialized.T;
+        });
         // PASS 2: DO STUFF
         // PRECEDENCE
         List<PrecedenceItem> precedenceList = [];
@@ -126,23 +69,17 @@ partial class ParserGenerator : AttributeBaseGenerator<ParserAttribute, ParserGe
         if (pd.HasValue)
         {
             var (raw, _) = pd.Value;
-            var precedenceArgs = raw.ConstructorArguments[0].Values;
-            if (associativityType is null)
-                goto exit;
             try
             {
-                precedenceList = PrecedenceAttrSyntaxParser.Parse(precedenceArgs, terminalType, associativityType);
+                precedenceList = ParserBaseHelper.ParsePrecedenceCore(genContext.SemanticModel, terminalType, associativityType, raw);
             }
             catch (LRParserRuntimeUnexpectedInputException)
             {
-                goto exit;
             }
             catch (LRParserRuntimeUnexpectedEndingException)
             {
-                goto exit;
             }
         }
-    exit:
         StringBuilder sb = new();
 
         foreach (var nt in nonTerminalType.GetMembers())
@@ -157,67 +94,19 @@ partial class ParserGenerator : AttributeBaseGenerator<ParserAttribute, ParserGe
                 Rule rule;
                 try
                 {
-                    rule = RuleAttrSyntaxParser.Parse(ruleargs, terminalType, nonTerminalType, keywordType);
+                    rule = ParserBaseHelper.RuleAttrSyntaxParser.Parse(ruleargs, terminalType, nonTerminalType, keywordType);
                 }
                 catch (LRParserRuntimeUnexpectedInputException)
                 {
-                    //var syn = raw.ApplicationSyntaxReference;
-                    //args.Diagnostics.Add(Diagnostic.Create(
-                    //    ParserRuleSyntaxErrorBase,
-                    //    syn is null ? nt.Locations[0] : Location.Create(syn.SyntaxTree, syn.Span),
-                    //    "Unexpected",
-                    //    e.UnexpectedElement
-                    //));
                     continue;
                 }
                 catch (LRParserRuntimeUnexpectedEndingException)
                 {
-                    //var syn = raw.ApplicationSyntaxReference;
-                    //args.Diagnostics.Add(Diagnostic.Create(
-                    //    ParserRuleSyntaxErrorBase,
-                    //    syn is null ? nt.Locations[0] : Location.Create(syn.SyntaxTree, syn.Span),
-                    //    "Expected",
-                    //    $"{string.Join(", ", (object?[])e.ExpectedInputs)} after the last parameter"
-                    //));
                     continue;
-                }
-                static string ConstantParameterToString(Option option)
-                {
-                    var (type, value) = option.ConstantParameterValue;
-                    // TODO
-                    if (value is null)
-                        return "null";
-
-                    if (type is { TypeKind: TypeKind.Enum })
-                    {
-                        return $"({new FullType(type)}){value}";
-                    }
-                    else if (value is string str)
-                    {
-                        // escape it first
-                        return Microsoft.CodeAnalysis.CSharp.SymbolDisplay.FormatLiteral(str, true);
-                    }
-                    return option.ConstantParameterValue.ConstantParameterValue switch
-                    {
-                        bool b => b ? "true" : "false",
-                        null => "null",
-                        var rest => rest.ToString()
-                    };
                 }
                 var nttype = NonTerminalTypes[value];
                 var (eles, constParams, red, ruleprec) = rule;
                 string creation;
-#pragma warning disable CS8321 // Local function is declared but never used
-                void Error(DiagnosticDescriptor desc, params object[] errorArgs)
-                {
-                    var syn = raw.ApplicationSyntaxReference;
-                    args.Diagnostics.Add(Diagnostic.Create(
-                        desc,
-                        location: syn is null ? nt.Locations[0] : Location.Create(syn.SyntaxTree, syn.Span),
-                        errorArgs
-                    ));
-                }
-#pragma warning restore CS8321 // Local function is declared but never used
                 if (red is ReduceMethod or ReduceConstructor)
                 {
                     StringBuilder reduceArgs = new();
@@ -262,7 +151,7 @@ partial class ParserGenerator : AttributeBaseGenerator<ParserAttribute, ParserGe
                         {
                             reduceArgs.AppendLine(
                                 $"""
-                                {s.ArgName}: {ConstantParameterToString(opt)},
+                                {s.ArgName}: {ParserBaseHelper.ConstantParameterToString(opt)},
                                 """
                             );
                         }
@@ -372,7 +261,7 @@ partial class ParserGenerator : AttributeBaseGenerator<ParserAttribute, ParserGe
                                         continue;
                                     }
                                     if (val is null)
-                                        val = ConstantParameterToString(opt);
+                                        val = ParserBaseHelper.ConstantParameterToString(opt);
                                     else
                                     {
 
@@ -512,7 +401,7 @@ partial class ParserGenerator : AttributeBaseGenerator<ParserAttribute, ParserGe
                                     if (pfa.ArgName is ParserFuncArgs.Value)
                                     {
                                         if (val is null)
-                                            val = ConstantParameterToString(opt);
+                                            val = ParserBaseHelper.ConstantParameterToString(opt);
                                         else
                                         {
 
@@ -521,7 +410,7 @@ partial class ParserGenerator : AttributeBaseGenerator<ParserAttribute, ParserGe
                                     else if (pfa.ArgName is ParserFuncArgs.List)
                                     {
                                         if (list is null)
-                                            list = ConstantParameterToString(opt);
+                                            list = ParserBaseHelper.ConstantParameterToString(opt);
                                         else
                                         {
 
