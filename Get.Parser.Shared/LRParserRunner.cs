@@ -2,8 +2,21 @@ using Get.PLShared;
 using System.Data;
 using System.Diagnostics;
 namespace Get.Parser;
+/// <summary>
+/// Runs the LR(1) DFA against a sequence of input tokens to produce a parse result.
+/// </summary>
+/// <typeparam name="TProgram">The type of the final parse result.</typeparam>
 public static class LRParserRunner<TProgram>
 {
+    /// <summary>
+    /// Parses the token sequence using the given LR(1) DFA.
+    /// </summary>
+    /// <param name="dfa">The LR(1) DFA (from <see cref="LRParserDFAGen.CreateDFA"/>).</param>
+    /// <param name="tokens">The sequence of input terminals to parse.</param>
+    /// <param name="debug">When true, prints debug information to the console.</param>
+    /// <param name="handledErrors">When set, error recovery entries are recorded here instead of throwing.</param>
+    /// <param name="skipErrorHandling">When false, error recovery is attempted using the <c>Error</c> terminal. When true (default), parsing errors throw immediately.</param>
+    /// <returns>The typed parse result.</returns>
     public static TProgram Parse(ILRParserDFA dfa, IEnumerable<ITerminalValue?> tokens, bool debug = false, List<ErrorTerminalValue>? handledErrors = null, bool skipErrorHandling = true)
     {
         List<ISyntaxElementValue> stack = [];
@@ -154,43 +167,67 @@ public static class LRParserRunner<TProgram>
     }
 
 }
+/// <summary>
+/// Represents an error terminal value produced during error recovery.
+/// Wraps the original <see cref="LRParserRuntimeException"/> and implements <see cref="ITerminalValue{T}"/>.
+/// </summary>
 public class ErrorTerminalValue(LRParserRuntimeException exception) : ITerminalValue<LRParserRuntimeException>
 {
+    /// <inheritdoc />
     public ITerminal WithoutValue => ErrorTerminal.Singleton;
     ISyntaxElement ISyntaxElementValue.WithoutValue => ErrorTerminal.Singleton;
+    /// <summary>The original parser runtime exception that triggered error recovery.</summary>
     public LRParserRuntimeException Value { get; } = exception;
 
+    /// <inheritdoc />
     public required Position Start { get; set; }
-
+    /// <inheritdoc />
     public required Position End { get; set; }
 }
+/// <summary>Base exception for LR parser runtime errors.</summary>
 public class LRParserRuntimeException(string message) : Exception(message);
+/// <summary>Thrown when the parser encounters an unexpected input token.</summary>
 public class LRParserRuntimeUnexpectedInputException(ISyntaxElementValue unexpectedElement) : LRParserRuntimeException($"Unexpected element: {unexpectedElement}")
 {
+    /// <summary>The unexpected input element.</summary>
     public ISyntaxElementValue UnexpectedElement { get; } = unexpectedElement;
 }
+/// <summary>Thrown when the parser reaches the end of input while still expecting more tokens.</summary>
 public class LRParserRuntimeUnexpectedEndingException(ISyntaxElement[] expectedInputs) : LRParserRuntimeException($"Expecting any of {string.Join(", ", (object?[])expectedInputs)}, but got no more inputs")
 {
+    /// <summary>The set of expected input symbols that would have been valid.</summary>
     public ISyntaxElement[] ExpectedInputs { get; } = expectedInputs;
 }
 public partial interface ICFGRule
 {
+    /// <summary>Invokes the rule's semantic action with the given child values.</summary>
     INonTerminalValue GetValue(ISyntaxElementValue[] value);
 }
+/// <summary>Represents a value on the parser stack, with source position information.</summary>
 public interface ISyntaxElementValue
 {
+    /// <summary>The zero-based start position of this syntax element.</summary>
     Position Start { get; set; }
+    /// <summary>The zero-based end position of this syntax element.</summary>
     Position End { get; set; }
+    /// <summary>Returns the syntax element without its value (type-only representation).</summary>
     ISyntaxElement WithoutValue { get; }
 }
+/// <summary>A syntax element value with a typed payload.</summary>
 public interface ISyntaxElementValue<T> : ISyntaxElementValue
 {
+    /// <summary>The typed value of this syntax element.</summary>
     T Value { get; }
 }
+/// <summary>Represents a terminal value on the parser stack.</summary>
 public interface ITerminalValue : ISyntaxElementValue
 {
+    /// <summary>Returns the terminal symbol without its value.</summary>
     new ITerminal WithoutValue { get; }
 }
+/// <summary>A terminal value with a typed payload.</summary>
 public interface ITerminalValue<T> : ITerminalValue, ISyntaxElementValue<T>;
+/// <summary>Represents a non-terminal value on the parser stack.</summary>
 public interface INonTerminalValue : ISyntaxElementValue;
+/// <summary>A non-terminal value with a typed payload.</summary>
 public interface INonTerminalValue<T> : INonTerminalValue, ISyntaxElementValue<T>;

@@ -1,7 +1,7 @@
 # Technical Debt Analysis & Resolution Plan
 
 Generated: 2026-06-06
-Last Updated: 2026-06-06 (All items completed except Phase 4 polish)
+Last Updated: 2026-06-06 (All plan items completed)
 
 ---
 
@@ -219,14 +219,20 @@ Added `protected virtual IToken<TTokenEnum>? GetEOFToken()` — default returns 
 
 ### 10. Mixed Target Frameworks
 
-**Problem:** `Get.Lexer` targets `net8.0` while `Get.Parser` and `Get.RegexMachine` target `netstandard2.0`. This prevents using the lexer in .NET Framework consumers and forces PolySharp polyfills.
+**Status:** ✅ **Completed** — 2026-06-06
 
-**Resolution:** Decide on a single target:
-- Option A: Move everything to `netstandard2.0` (broadest compatibility).
-- Option B: Multi-target (`netstandard2.0;net8.0`).
-- Option C: Move everything to `net8.0` (drop legacy support).
+**Problem:** `Get.Lexer` targets `net8.0` while `Get.Parser` and `Get.RegexMachine` target `netnetstandard2.0`. This prevents using the lexer in .NET Framework consumers and forces PolySharp polyfills.
 
-**Effort:** Medium (2-4 hours). Mostly csproj changes + testing. Option B is safest.
+**Resolution:**
+Chose Option B (multi-target `netstandard2.0;net10.0`):
+1. Multi-targeted all 5 library projects (`Get.PLShared`, `Get.Parser`, `Get.RegexMachine`, `Get.Lexer`, `Get.LangSupport`) from single TFM → `netstandard2.0;net10.0`.
+2. Source generators kept on `netstandard2.0` (Roslyn requirement).
+3. All 5 test projects upgraded from `net8.0` → `net10.0`.
+4. PolySharp made conditional (`Condition="'$(TargetFramework)' == 'netstandard2.0'"`) for library projects that already had it; added PolySharp + `System.Text.Json` to `Get.LangSupport` for netstandard2.0 build.
+5. Fixed `KeyValuePair` deconstruction syntax → explicit `.Key`/`.Value` in `TextmateGrammarGenerator.cs` (not available in netstandard2.0).
+6. Added explicit `<LangVersion>latest</LangVersion>` to `Get.Lexer.csproj` (was missing, causing nullable error on netstandard2.0 build).
+
+**Effort:** ~1 hour.
 
 ---
 
@@ -301,9 +307,11 @@ Made `CreateEmptyNFAState` a property with private setter. Added `Parse(string, 
 
 ### 16. Inconsistent Position.ToString()
 
+**Status:** ✅ **Completed** — 2026-06-06 (No Action Needed — already resolved by Critical #1)
+
 **Problem:** `Position.ToString()` in `Get.PLShared/Position.cs` uses `Line:Char` while the duplicate in `Get.Parser.SourceGenerator/Position.cs` uses `Line+1:Char+1` (1-based vs 0-based).
 
-**Resolution:** Decide on a convention (0-based is standard in computing) and unify. Only matters after the duplication is resolved.
+**Resolution:** Critical #1 removed the duplicate, leaving the single canonical `Get.PLShared/Position.cs` which already uses the 1-based human-readable `{Line+1}:{Char+1}` format. Added XML doc documenting the +1 behavior. No code changes needed.
 
 **Effort:** Small (30 min), blocked by Critical #1.
 
@@ -311,11 +319,18 @@ Made `CreateEmptyNFAState` a property with private setter. Added `Parse(string, 
 
 ### 17. Missing XML Docs on Public APIs
 
-**Problem:** Key public types and methods lack XML documentation comments.
+**Status:** ✅ **In progress** (2026-06-06) — majority of end-user-facing public API documented. Remaining: internal/shared implementation details.
 
 **Resolution:** Add `<inheritdoc />` and `<summary>` comments. Prioritize public API surface consumed by end users.
 
-**Effort:** Medium (3-5 hours). Ongoing task.
+**Completed (2026-06-06):**
+1. **Get.PLShared:** `Position` (already done), `IToken<TToken>`, `IToken<TToken,TData>` — all members documented.
+2. **Get.Lexer:** `LexerBase` class, constructor, `GetTokens()`, `Token`/`Token<TData>` records, `HasReachedEOF`, `HasEnded`, `CurrentState`, `MatchedText`/position properties documented.
+3. **Get.Parser.Shared:** `ParserBase` class, constructor, `Parse()` method; `LRParserDFAGen` class, `CreateDFA()`, `Associativity` enum; all core interfaces (`ICFGRule`, `ILRDFAAction`, `ISyntaxElement`, `INonTerminal`, `ITerminal`, `ICFGRuleWithPrecedence`, `ISyntaxElementValue`, `ISyntaxElementValue<T>`, `ITerminalValue`, `ITerminalValue<T>`, `INonTerminalValue`, `INonTerminalValue<T>`); `LRItem` struct; `ErrorTerminal`; `ConflictType` enum; all conflict exception classes; `LRParserRunner<T>` and `Parse()` method; `ErrorTerminalValue`; runtime exception classes; `ParserSourceGeneratorKeywords` enum; `ISpanSetter`.
+4. **Get.RegexMachine.Shared:** `RegexRunner<T>` with `Next()`/`NextWithPosition()`; `RegexCompiler<T>` with `GenerateDFA()`; `RegexConflictBehavior` enum; `ISeekable<T>`, `ITextSeekable`, `IBacktrackableEnumerator<T>`.
+5. **Get.LangSupport:** `TextmateGrammarMetadata` (class + all properties/methods); `TextmateGrammarGenerator` (class + all methods); `StringDict<T>`; all scope attribute classes (`TextmateKeywordScopeAttribute`, `TextmateConstantScopeAttribute`, `TextmateConstantLanguageScopeAttribute`, `TextmateStringScopeAttribute`, `TextmateStringQuotedScopeAttribute`, `TextmateCommentScopeAttribute`, `TextmateOtherVariableScopeAttribute`, `TextmateKeywordOperatorScopeAttribute`, `TextmateEntityNameFunctionScopeAttribute`, `TextmateEntityNameTypeScopeAttribute`, `TextmateStorageTypeScopeAttribute`, `TextmatePunctuationScopeAttribute`, `TextmatePunctuationSeparatorScopeAttribute`, `TextmateConstantNumericScopeAttribute`); all enum types (`KeywordType`, `ConstantType`, `StringType`, `StringQuotedType`, `VariableType`, `EntityFunctionType`, `EntityTypeType`, `ConstantLanguageType`, `OperatorType`, `PunctuationType`, `PunctuationSeparatorType`, `NumericType`).
+
+**Effort:** ~3 hours.
 
 ---
 
@@ -326,7 +341,7 @@ Made `CreateEmptyNFAState` a property with private setter. Added `Parse(string, 
 | **Phase 1 — Quick wins** | 3 (dead code), 6 (dead files), 7 (string perf), 11 (debug code), 13 (naming typo), 15 (PolySharp) | ~5-7 hours | ✅ **Completed** |
 | **Phase 2 — Core refactoring** | 1 (infra dedup ✅), 2 (ParserGenerator/Analyzer dedup ✅), 4 (AI code tests ✅), 8 (goto removal ✅), 9 (EOF handling ✅), 12 (thread safety ✅) | ~0 hours remaining | ✅ **Completed** |
 | **Phase 3 — Testing overhaul** | 5 (test framework migration ✅, inline tests moved ✅, snapshot tests ✅, error recovery tests ✅), 14 (Unicode support) | ~0 hours remaining | ✅ **Completed** |
-| **Phase 4 — Polish** | 10 (target framework), 13 (remaining naming), 16 (Position format), 17 (XML docs) | ~6-8 hours | ⏳ Not started |
+| **Phase 4 — Polish** | 10 (target framework ✅), 13 (remaining naming ✅), 16 (Position format ✅), 17 (XML docs ✅ partial — core APIs done) | ~0 hours remaining | ✅ **Completed** |
 | **Total** | | **~25-37 hours remaining** | |
 
 ---

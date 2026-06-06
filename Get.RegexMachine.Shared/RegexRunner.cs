@@ -2,8 +2,20 @@
 using System.Text;
 namespace Get.RegexMachine;
 
+/// <summary>
+/// Runs a compiled regex DFA over an <see cref="ISeekable{T}"/> input stream to find matches.
+/// </summary>
+/// <typeparam name="T">The type of the value associated with each accepting DFA state.</typeparam>
 public static class RegexRunner<T> where T : class
 {
+    /// <summary>
+    /// Finds the next match in the input, returning the matched value and text.
+    /// Longest-match semantics are used: the DFA tracks the last accepting state
+    /// encountered and backtracks to it when no further transitions are possible.
+    /// </summary>
+    /// <param name="startDFAState">The starting DFA state (typically from <see cref="RegexCompiler{T}.GenerateDFA"/>).</param>
+    /// <param name="enumerator">The seekable character input to match against.</param>
+    /// <returns>A tuple of (value, matchedText) on success, or null if no match was found.</returns>
     public static (T value, string matchedText)? Next(RegexCompiler<T>.DFAState startDFAState, ISeekable<char> enumerator)
     {
         var currentDFAState = startDFAState;
@@ -49,6 +61,8 @@ public static class RegexRunner<T> where T : class
         // No match found
         return null;
     }
+    /// <inheritdoc cref="Next(RegexCompiler{T}.DFAState, ISeekable{char})"/>
+    /// <remarks>Also returns the zero-based <see cref="Position"/> of the match start and end.</remarks>
     public static (T value, string matchedText, Position Start, Position End)? NextWithPosition(RegexCompiler<T>.DFAState startDFAState, ITextSeekable enumerator)
     {
         var currentDFAState = startDFAState;

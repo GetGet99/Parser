@@ -2,7 +2,14 @@
 using System.Linq;
 
 namespace Get.Parser;
+/// <summary>Operator associativity for resolving shift-reduce conflicts via precedence.</summary>
 public enum Associativity { Left, Right, NonAssociative }
+/// <summary>
+/// Generates an LR(1) DFA from a context-free grammar.
+/// Used internally by <see cref="ParserBase{Terminal, NonTerminal, TOut}"/> via the source generator.
+/// </summary>
+/// <param name="nontermComparer">Comparer for non-terminal symbols.</param>
+/// <param name="termComparer">Comparer for terminal symbols (including null for EOF).</param>
 public class LRParserDFAGen(IEqualityComparer<INonTerminal> nontermComparer, IEqualityComparer<ITerminal?> termComparer)
 {
     HashSetEqualityComparer hsComparer = new();
@@ -31,6 +38,12 @@ public class LRParserDFAGen(IEqualityComparer<INonTerminal> nontermComparer, IEq
             }
         }
     }
+    /// <summary>
+    /// Creates the LR(1) DFA from the given grammar, start symbol, and optional precedence rules.
+    /// </summary>
+    /// <param name="grammar">The list of context-free grammar rules.</param>
+    /// <param name="startNode">The start non-terminal symbol.</param>
+    /// <param name="precedenceList">Precedence and associativity declarations for conflict resolution.</param>
     public ILRParserDFA CreateDFA(IReadOnlyList<ICFGRule> grammar, INonTerminal startNode, (ITerminal[] Terminals, Associativity Associativity)[] precedenceList)
     {
         Dictionary<INonTerminal, HashSet<ICFGRule>> allRuleMap = new(nontermComparer);
@@ -431,6 +444,7 @@ public class LRParserDFAGen(IEqualityComparer<INonTerminal> nontermComparer, IEq
         return Closure(gotoItems, allRuleMap, firstSetMetadata);
     }
 }
+/// <summary>An LR(1) item: a grammar rule with a dot position and a set of lookahead terminals.</summary>
 public readonly record struct LRItem(ICFGRule OriginalCFGRule, int DotIndex, ITerminal?[] ReduceOn)
 {
     public INonTerminal Target => OriginalCFGRule.Target;
@@ -464,14 +478,22 @@ public readonly record struct LRItem(ICFGRule OriginalCFGRule, int DotIndex, ITe
         return hash;
     }
 }
+/// <summary>
+/// A special terminal representing the error token used in error recovery.
+/// Only one instance exists (<see cref="Singleton"/>).
+/// </summary>
 public sealed class ErrorTerminal : ITerminal
 {
+    /// <summary>The singleton instance of <see cref="ErrorTerminal"/>.</summary>
     public static ITerminal Singleton { get; } = new ErrorTerminal();
     private ErrorTerminal() { }
 }
+/// <summary>Represents a context-free grammar rule: <c>Target → Expressions</c>.</summary>
 public partial interface ICFGRule
 {
+    /// <summary>The non-terminal that this rule reduces to.</summary>
     INonTerminal Target { get; }
+    /// <summary>The sequence of symbols on the right-hand side of the rule.</summary>
     IReadOnlyList<ISyntaxElement> Expressions { get; }
 }
 public interface ILRParserDFA
@@ -484,6 +506,7 @@ public interface ILRParserDFA
     /// <returns>null if we are shifting. Otherwise, return the appropriate action (either accept or reduce).</returns>
     ILRDFAAction? GetAction(IReadOnlyList<ISyntaxElementValue> stack, ITerminalValue? nextToken);
 }
+/// <summary>LR parse action indicating the input has been accepted (parse complete).</summary>
 public record struct ILRDFAAccept : ILRDFAAction
 {
     public override string ToString()
@@ -491,6 +514,8 @@ public record struct ILRDFAAccept : ILRDFAAction
         return "Accept";
     }
 }
+/// <summary>LR parse action indicating a reduction by the given rule.</summary>
+/// <param name="Rule">The grammar rule to reduce by.</param>
 public record struct LRDFAReduce(ICFGRule Rule) : ILRDFAAction
 {
     public override string ToString()
@@ -498,26 +523,32 @@ public record struct LRDFAReduce(ICFGRule Rule) : ILRDFAAction
         return $"Reduce with: {Rule}";
     }
 }
+/// <summary>Base interface for LR parse actions (<see cref="ILRDFAAccept"/> or <see cref="LRDFAReduce"/>). Null means shift.</summary>
 public interface ILRDFAAction;
+/// <summary>Base interface for grammar symbols (both terminals and non-terminals).</summary>
 public interface ISyntaxElement
 {
 
 }
+/// <summary>Represents a non-terminal symbol in the grammar.</summary>
 public interface INonTerminal : ISyntaxElement;
+/// <summary>Represents a terminal symbol in the grammar.</summary>
 public interface ITerminal : ISyntaxElement;
-//public interface ITerminalWithCustomPrecedence : ITerminal
-//{
-//    ITerminal PrecedenceTerminal { get; }
-//}
+/// <summary>A grammar rule with an optional precedence terminal for conflict resolution.</summary>
 public interface ICFGRuleWithPrecedence : ICFGRule
 {
+    /// <summary>The terminal used for precedence comparisons, or null if no precedence is assigned.</summary>
     ITerminal? PrecedenceTerminal { get; }
 }
+/// <summary>Types of LR parser conflicts detected during DFA generation.</summary>
 public enum ConflictType
 {
+    /// <summary>A shift-reduce conflict: the parser can either shift or reduce on the same lookahead.</summary>
     ShiftReduce,
+    /// <summary>A reduce-reduce conflict: two different rules can reduce on the same lookahead.</summary>
     ReduceReduce
 }
+/// <summary>Base exception for LR parser conflicts detected during DFA generation.</summary>
 public abstract class LRConflictException : Exception
 {
     public abstract ConflictType ConflictType { get; }
@@ -581,10 +612,12 @@ public abstract class LRConflictException : Exception
         }
     }
 }
+/// <summary>Thrown when a shift-reduce conflict is detected and cannot be resolved by precedence.</summary>
 public class LRShiftReduceConflictException : LRConflictException
 {
     public override ConflictType ConflictType => ConflictType.ShiftReduce;
 }
+/// <summary>Thrown when a reduce-reduce conflict is detected.</summary>
 public class LRReduceReduceConflictException : LRConflictException
 {
     public override ConflictType ConflictType => ConflictType.ReduceReduce;
