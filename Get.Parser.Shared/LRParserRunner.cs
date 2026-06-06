@@ -16,116 +16,129 @@ public static class LRParserRunner<TProgram>
                 Console.WriteLine($"Stack is now {string.Join(", ", stack)}");
                 Console.WriteLine($"Next Token: {nextToken}");
             }
-        rerun:
-            ILRDFAAction? act;
-            try
-            {
-                act = dfa.GetAction(stack, nextToken);
-            }
-            catch (LRParserRuntimeException e)
-            {
-                // error handling
 
-                // backward compatability: if grammar wasn't made with error handling in mind
-                // new skipping token logic may lead to this function complete without throwing
-                // on invalid grammar
-                // grammar must opt in to error handling to do error handling
-                if (skipErrorHandling)
-                    throw;
-                
-                if (stack.Count is 0)
-                    // i don't know
-                    throw;
+            bool shouldRerun;
+            do
+            {
+                shouldRerun = false;
+                ILRDFAAction? act = null;
 
-                if (insertionAttemptedForThisToken)
+                try
                 {
-                    if (nextToken != null)
-                    {
-                        handledErrors?.Add(new ErrorTerminalValue(e)
-                        {
-                            Start = nextToken.Start,
-                            End = nextToken.End
-                        });
-                        continue;
-                    }
-
-                    throw;
+                    act = dfa.GetAction(stack, nextToken);
                 }
-
-                ListSpan<ISyntaxElementValue> tempStack = new(stack, startIdx: 0, count: stack.Count);
-                var err = new ErrorTerminalValue(e) { Start = stack[^1].End, End = stack[^1].End };
-                //stack[^1] = err;
-                do
+                catch (LRParserRuntimeException e)
                 {
-                    try
+                    // error handling
+
+                    // backward compatability: if grammar wasn't made with error handling in mind
+                    // new skipping token logic may lead to this function complete without throwing
+                    // on invalid grammar
+                    // grammar must opt in to error handling to do error handling
+                    if (skipErrorHandling)
+                        throw;
+
+                    if (stack.Count is 0)
+                        // i don't know
+                        throw;
+
+                    if (insertionAttemptedForThisToken)
                     {
-                        act = dfa.GetAction(tempStack, err);
-                        handledErrors?.Add(err);
-                        insertionAttemptedForThisToken = true;
-                        var itemsRemoved = stack.Count - tempStack.Count;
-                        if (itemsRemoved > 0)
-                            stack.RemoveRange(index: stack.Count - itemsRemoved, count: itemsRemoved);
-                        goto resolved;
-                    }
-                    catch
-                    {
-                        if (tempStack.Count >= 1)
+                        if (nextToken != null)
                         {
-                            err.Start = tempStack[^1].Start;
-                            // remove stack[^1]
-                            tempStack = new(stack, startIdx: 0, count: tempStack.Count - 1);
-                            continue;
+                            handledErrors?.Add(new ErrorTerminalValue(e)
+                            {
+                                Start = nextToken.Start,
+                                End = nextToken.End
+                            });
+                            // skip this token, continue foreach
+                            shouldRerun = false;
+                            break;
                         }
-                        // if no more to delete from stack,
-                        // break out of the loop and try to skip this problematic token.
-                        break;
+
+                        throw;
                     }
+
+                    ListSpan<ISyntaxElementValue> tempStack = new(stack, startIdx: 0, count: stack.Count);
+                    var err = new ErrorTerminalValue(e) { Start = stack[^1].End, End = stack[^1].End };
+                    bool recovered = false;
+                    do
+                    {
+                        try
+                        {
+                            act = dfa.GetAction(tempStack, err);
+                            handledErrors?.Add(err);
+                            insertionAttemptedForThisToken = true;
+                            var itemsRemoved = stack.Count - tempStack.Count;
+                            if (itemsRemoved > 0)
+                                stack.RemoveRange(index: stack.Count - itemsRemoved, count: itemsRemoved);
+                            recovered = true;
+                            break;
+                        }
+                        catch
+                        {
+                            if (tempStack.Count >= 1)
+                            {
+                                err.Start = tempStack[^1].Start;
+                                // remove stack[^1]
+                                tempStack = new(stack, startIdx: 0, count: tempStack.Count - 1);
+                                continue;
+                            }
+                            // if no more to delete from stack,
+                            // break out of the loop and try to skip this problematic token.
+                            break;
+                        }
+                    }
+                    while (tempStack.Count > 0);
+
+                    if (!recovered)
+                        throw;
+
+                    // act was set by error recovery, fall through to action dispatch
                 }
-                while (tempStack.Count > 0);
-                throw;
-            }
-        resolved:
-            if (act is null) // SHIFT
-            {
-                if (debug) Console.WriteLine($"SHIFT");
-                if (nextToken is null)
-                    throw new InvalidOperationException(
-                        "Can no longer shift the object, the DFA should be handling this."
-                    );
-                stack.Add(nextToken);
-            }
-            else if (act is LRDFAReduce reduce)
-            {
-                var rule = reduce.Rule;
-                if (debug) Console.WriteLine($"REDUCE WITH {rule.Target} <- {string.Join(" ", rule.Expressions)}");
-                var values = new ISyntaxElementValue[rule.Expressions.Count];
-                foreach (int i in ..values.Length)
+
+                if (act is null) // SHIFT
                 {
-                    values[^(i + 1)] = stack[^(i + 1)];
+                    if (debug) Console.WriteLine($"SHIFT");
+                    if (nextToken is null)
+                        throw new InvalidOperationException(
+                            "Can no longer shift the object, the DFA should be handling this."
+                        );
+                    stack.Add(nextToken);
                 }
-                stack.RemoveRange(stack.Count - values.Length, values.Length);
-                var val = rule.GetValue(values);
-                if (!val.WithoutValue.Equals(reduce.Rule.Target))
-                    throw new InvalidDataException("The returned symbol does not match the given rule");
-                if (values.Length > 0)
+                else if (act is LRDFAReduce reduce)
                 {
-                    val.Start = values[0].Start;
-                    val.End = values[^1].End;
+                    var rule = reduce.Rule;
+                    if (debug) Console.WriteLine($"REDUCE WITH {rule.Target} <- {string.Join(" ", rule.Expressions)}");
+                    var values = new ISyntaxElementValue[rule.Expressions.Count];
+                    foreach (int i in ..values.Length)
+                    {
+                        values[^(i + 1)] = stack[^(i + 1)];
+                    }
+                    stack.RemoveRange(stack.Count - values.Length, values.Length);
+                    var val = rule.GetValue(values);
+                    if (!val.WithoutValue.Equals(reduce.Rule.Target))
+                        throw new InvalidDataException("The returned symbol does not match the given rule");
+                    if (values.Length > 0)
+                    {
+                        val.Start = values[0].Start;
+                        val.End = values[^1].End;
+                    }
+                    else if (stack.Count > 0)
+                    {
+                        val.Start = val.End = stack[^1].End;
+                    }
+                    stack.Add(val);
+                    shouldRerun = true; // rerun without consuming next token
                 }
-                else if (stack.Count > 0)
+                else if (act is ILRDFAAccept accept)
                 {
-                    val.Start = val.End = stack[^1].End;
+                    if (debug) Console.WriteLine($"ACCEPT");
+                    if (stack[0] is not INonTerminalValue<TProgram> programNode)
+                        throw new InvalidOperationException("Not accepting on the program node or program does not implement INonTerminalValue<TProgram>");
+                    return programNode.Value;
                 }
-                stack.Add(val);
-                goto rerun; // rerun, as we do not want to read the next token yet.
-            }
-            else if (act is ILRDFAAccept accept)
-            {
-                if (debug) Console.WriteLine($"ACCEPT");
-                if (stack[0] is not INonTerminalValue<TProgram> programNode)
-                    throw new InvalidOperationException("Not accepting on the program node or program does not implement INonTerminalValue<TProgram>");
-                return programNode.Value;
-            }
+            } while (shouldRerun);
         }
         throw new UnreachableException("Infinite() should be infinte? How?");
     }
