@@ -6,17 +6,71 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
+using Microsoft.CodeAnalysis.Diagnostics;
 
 namespace Get.EasyCSharp.GeneratorTools;
-
-abstract class AttributeBaseGenerator<TAttribute1, TAttributeDataType1, TSyntaxNode, TSymbol> : IIncrementalGenerator
-    // The User-Defined Attribute Type to process
+abstract class AttributeBaseAnalyzer<TAttribute1, TAttributeDataType1, TSyntaxNode, TSymbol>(SyntaxKind syntaxKind) : DiagnosticAnalyzer
     where TAttribute1 : Attribute
-    // TAttributeDataType1: The Attribute Type to be used for AttributeData to custom struct
-    // The SyntaxNode type to process
     where TSyntaxNode : MemberDeclarationSyntax
-    // The Symbol type to process
+    where TSymbol : ISymbol
+{
+    protected virtual bool CountAttributeSubclass => true;
+    static readonly string FullAttributeName;
+    static AttributeBaseAnalyzer()
+    {
+        var fn = typeof(TAttribute1).FullName;
+        FullAttributeName = fn;
+    }
+
+    protected virtual void OnInitialize(IncrementalGeneratorPostInitializationContext context) { }
+    public override void Initialize(AnalysisContext context)
+    {
+        context.EnableConcurrentExecution();
+        context.ConfigureGeneratedCodeAnalysis(GeneratedCodeAnalysisFlags.Analyze | GeneratedCodeAnalysisFlags.ReportDiagnostics);
+        context.RegisterSyntaxNodeAction((genContext) =>
+        {
+            var syntaxNode = (TSyntaxNode)genContext.Node;
+            if (syntaxNode.AttributeLists.Count is 0) return;
+
+            var symbols = GetSymbols(genContext, syntaxNode).ToArray();
+            if (symbols.Length is 0) return;
+
+            var Class = genContext.SemanticModel.Compilation.GetTypeByMetadataName(FullAttributeName);
+            var attributes = (
+                from x in symbols[0].GetAttributes()
+                where CountAttributeSubclass ?
+                    x.AttributeClass?.IsSubclassFrom(Class) ?? false :
+                    x.AttributeClass?.IsTheSameAs(Class) ?? false
+                select (RealAttr: x, WrapperAttr: TransformAttribute(x, genContext.SemanticModel.Compilation))
+            ).Where(x => x.RealAttr is not null && x.WrapperAttr is not null).ToArray();
+            if (attributes.Length is 0) return;
+            foreach (var symbol in symbols)
+                OnPointVisit(new(genContext, syntaxNode, symbol, attributes, CancellationToken.None));
+        }, syntaxKind);
+    }
+    protected abstract TAttributeDataType1? TransformAttribute(AttributeData attributeData, Compilation compilation);
+    protected abstract void OnPointVisit(OnPointVisitArguments args);
+    protected readonly record struct OnPointVisitArguments(
+        SyntaxNodeAnalysisContext Context,
+        TSyntaxNode SyntaxNode,
+        TSymbol Symbol,
+        (AttributeData Original, TAttributeDataType1 Wrapper)[] AttributeDatas,
+        CancellationToken CancellationToken
+    )
+    {
+        public void ReportDiagnostic(Diagnostic diagnostic)
+            => Context.ReportDiagnostic(diagnostic);
+    }
+    protected virtual IEnumerable<TSymbol> GetSymbols(SyntaxNodeAnalysisContext genContext, TSyntaxNode syntaxNode)
+    {
+        if (genContext.SemanticModel.GetDeclaredSymbol(syntaxNode) is TSymbol symbol) yield return symbol;
+    }
+}
+abstract class AttributeBaseGenerator<TAttribute1, TAttributeDataType1, TSyntaxNode, TSymbol> : IIncrementalGenerator
+    where TAttribute1 : Attribute
+    where TSyntaxNode : MemberDeclarationSyntax
     where TSymbol : ISymbol
 {
     protected virtual bool CountAttributeSubclass => true;
@@ -24,10 +78,6 @@ abstract class AttributeBaseGenerator<TAttribute1, TAttributeDataType1, TSyntaxN
     static AttributeBaseGenerator()
     {
         var fn = typeof(TAttribute1).FullName;
-        //var idx = fn.IndexOf('`');
-        //if (idx != -1) // generic type, we ignore all generic variable
-        //    FullAttributeName = fn[..idx];
-        //else
         FullAttributeName = fn;
     }
 
@@ -44,24 +94,31 @@ abstract class AttributeBaseGenerator<TAttribute1, TAttributeDataType1, TSyntaxN
 
         context.RegisterSourceOutput(output, (sourceProductionContext, value) =>
         {
+            foreach (var diag in value.Item3)
+                sourceProductionContext.ReportDiagnostic(diag);
+
             sourceProductionContext.AddSource(value.FileName!.Replace("?", "Nullable"), value.Content!);
         });
     }
     protected abstract TAttributeDataType1? TransformAttribute(AttributeData attributeData, Compilation compilation);
-    protected abstract string? OnPointVisit(GeneratorSyntaxContext genContext, TSyntaxNode syntaxNode, TSymbol symbol, (AttributeData Original, TAttributeDataType1 Wrapper)[] attributeData);
-    (string? FileName, string? Content) Transform(GeneratorSyntaxContext genContext, CancellationToken cancelationToken)
+    protected abstract string? OnPointVisit(OnPointVisitArguments args);
+    protected record struct OnPointVisitArguments(
+        GeneratorSyntaxContext GenContext,
+        TSyntaxNode SyntaxNode,
+        TSymbol Symbol,
+        (AttributeData Original, TAttributeDataType1 Wrapper)[] AttributeDatas,
+        List<Diagnostic> Diagnostics,
+        CancellationToken CancellationToken
+    );
+    (string? FileName, string? Content, Diagnostic[]) Transform(GeneratorSyntaxContext genContext, CancellationToken cancelationToken)
     {
         var syntaxNode = (TSyntaxNode)genContext.Node;
-        // Filter out everything which has no attribute
-        if (syntaxNode.AttributeLists.Count is 0) return (null, null);
+        if (syntaxNode.AttributeLists.Count is 0) return (null, null, []);
 
-        // Get Symbol
         var symbols = GetSymbols(genContext, syntaxNode).ToArray();
-        if (symbols.Length is 0) return (null, null);
+        if (symbols.Length is 0) return (null, null, []);
 
-        // Get Attributes
         var Class = genContext.SemanticModel.Compilation.GetTypeByMetadataName(FullAttributeName);
-
         var attributes = (
             from x in symbols[0].GetAttributes()
             where CountAttributeSubclass ?
@@ -69,17 +126,16 @@ abstract class AttributeBaseGenerator<TAttribute1, TAttributeDataType1, TSyntaxN
                 x.AttributeClass?.IsTheSameAs(Class) ?? false
             select (RealAttr: x, WrapperAttr: TransformAttribute(x, genContext.SemanticModel.Compilation))
         ).Where(x => x.RealAttr is not null && x.WrapperAttr is not null).ToArray();
-        if (attributes.Length is 0) return (null, null);
+        if (attributes.Length is 0) return (null, null, []);
         string? output;
-        // All conditions satistfy except for actual running generator
+        List<Diagnostic> diagnostics = [];
         try
         {
-            output = (from symbol in symbols select OnPointVisit(genContext, syntaxNode, symbol, attributes)).JoinDoubleNewLine();
-            if (output is null) return (null, null);
+            output = (from symbol in symbols select OnPointVisit(new(genContext, syntaxNode, symbol, attributes, diagnostics, cancelationToken))).JoinDoubleNewLine();
+            if (output is null) return (null, null, [.. diagnostics]);
         }
         catch (Exception e)
         {
-            // Log the exception
             output = $"""
             /*
                 Exception Occured: {e.GetType().FullName}{e.Message}
@@ -89,31 +145,37 @@ abstract class AttributeBaseGenerator<TAttribute1, TAttributeDataType1, TSyntaxN
             */
             """;
         }
-        // All conditions satisfy
         var containingClass = symbols[0] is INamedTypeSymbol nts ? nts : symbols[0].ContainingType;
         var genericParams = containingClass.TypeParameters;
         var classHeader =
             genericParams.Length is 0 ?
                 containingClass.Name :
                 $"{containingClass.Name}<{string.Join(", ", from x in genericParams select x.Name)}>";
-        return ($"{string.Join(" ", from x in symbols select x.ToString().Replace('<','[').Replace('>', ']'))}.g.cs",
+        return ($"{string.Join(" ", from x in symbols select x.ToString().Replace('<', '[').Replace('>', ']'))}.g.cs",
             $$"""
             #nullable enable
             // Autogenerated for {{string.Join(", ", symbols)}}
             
             namespace {{containingClass.ContainingNamespace}}
             {
-                partial class {{classHeader}}
+                partial {{containingClass.TypeKind switch
+            {
+                TypeKind.Interface => "interface",
+                TypeKind.Struct => "struct",
+                TypeKind.Class or _ => "class",
+            }}} {{classHeader}}
                 {
+                    {{
                     // Original
                     /*
                     {{syntaxNode.ToString().IndentWOF(2)}}
                     */
+                    ""}}
                     
                     {{output.IndentWOF(2)}}
                 }
             }
-            """);
+            """, [.. diagnostics]);
     }
     protected virtual IEnumerable<TSymbol> GetSymbols(GeneratorSyntaxContext genContext, TSyntaxNode syntaxNode)
     {
@@ -121,17 +183,11 @@ abstract class AttributeBaseGenerator<TAttribute1, TAttributeDataType1, TSyntaxN
     }
 }
 abstract class AttributeBaseGenerator<TAttribute1, TAttributeDataType1, TAttribute2, TAttributeDataType2, TSyntaxNode, TSymbol> : IIncrementalGenerator
-    // The User-Defined Attribute Type to process
     where TAttribute1 : Attribute
-    // The Attribute Type to be used for AttributeData to custom struct
     where TAttributeDataType1 : struct
-    // The User-Defined Attribute Type to process
     where TAttribute2 : Attribute
-    // The Attribute Type to be used for AttributeData to custom struct
     where TAttributeDataType2 : struct
-    // The SyntaxNode type to process
     where TSyntaxNode : MemberDeclarationSyntax
-    // The Symbol type to process
     where TSymbol : ISymbol
 {
     static readonly string FullAttribute1Name = typeof(TAttribute1).FullName;
@@ -159,14 +215,11 @@ abstract class AttributeBaseGenerator<TAttribute1, TAttributeDataType1, TAttribu
     (string? FileName, string? Content) Transform(GeneratorSyntaxContext genContext, CancellationToken cancelationToken)
     {
         var syntaxNode = (TSyntaxNode)genContext.Node;
-        // Filter out everything which has no attribute
         if (syntaxNode.AttributeLists.Count is 0) return (null, null);
 
-        // Get Symbol
         var uncastedSymbol = genContext.SemanticModel.GetDeclaredSymbol(syntaxNode);
         if (uncastedSymbol is not TSymbol symbol) return (null, null);
 
-        // Get Attributes
         var attribute1s = (
             from x in symbol.GetAttributes()
             where x.AttributeClass?.ToDisplayString() == FullAttribute1Name
@@ -181,7 +234,6 @@ abstract class AttributeBaseGenerator<TAttribute1, TAttributeDataType1, TAttribu
         if (attribute1s.Length is 0 && attribute2s.Length is 0) return (null, null);
 
         string? output;
-        // All conditions satistfy except for actual running generator
         try
         {
             output = OnPointVisit(genContext, syntaxNode, symbol, attribute1s, attribute2s);
@@ -189,7 +241,6 @@ abstract class AttributeBaseGenerator<TAttribute1, TAttributeDataType1, TAttribu
         }
         catch (Exception e)
         {
-            // Log the exception
             output = $"""
             /*
                 Exception Occured: {e.GetType().FullName}{e.Message}
@@ -199,7 +250,6 @@ abstract class AttributeBaseGenerator<TAttribute1, TAttributeDataType1, TAttribu
             */
             """;
         }
-        // All conditions satisfy
         var containingClass = symbol.ContainingType;
         var genericParams = containingClass.TypeParameters;
         var classHeader =

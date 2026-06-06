@@ -23,4 +23,14 @@
 	<Import Project="..\Get.Lexer.Shared\Get.Lexer.Shared.projitems" Label="Shared" />
 	<Import Project="..\Get.RegexMachine.Shared\Get.RegexMachine.Shared.projitems" Label="Shared" />
 	<Import Project="..\Get.Parser.Shared\Get.Parser.Shared.projitems" Label="Shared" />
+	<ItemGroup>
+		<Compile Include="..\Get.EasyCSharp.GeneratorTools\GeneratorBase.cs" Link="Shared\GeneratorBase.cs" />
+		<Compile Include="..\Get.EasyCSharp.GeneratorTools\AddAttributeConverterAttribute.cs" Link="Shared\AddAttributeConverterAttribute.cs" />
+		<Compile Include="..\Get.EasyCSharp.GeneratorTools\AttributeHelper.cs" Link="Shared\AttributeHelper.cs" />
+		<Compile Include="..\Get.EasyCSharp.GeneratorTools\FullType.cs" Link="Shared\FullType.cs" />
+		<Compile Include="..\Get.EasyCSharp.GeneratorTools\Extension.cs" Link="Shared\Extension.cs" />
+		<Compile Include="..\Get.EasyCSharp.GeneratorTools\AttributeBaseGenerator.cs" Link="Shared\AttributeBaseGenerator.cs" />
+		<Compile Include="..\Get.PLShared\Position.cs" Link="Shared\Position.cs" />
+		<Compile Include="..\Get.PLShared\IToken.cs" Link="Shared\IToken.cs" />
+	</ItemGroup>
 </Project>

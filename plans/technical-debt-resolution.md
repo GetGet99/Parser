@@ -33,14 +33,15 @@ Last Updated: 2026-06-06 (Quick Wins completed)
 
 Also `TestUtils.cs` is duplicated in `Get.Lexer/` and `Get.Lexer.SourceGenerator/`.
 
-**Status:** ⏳ Not started
+**Status:** ✅ **Completed** — 2026-06-06
 
 **Resolution:**
-1. Remove duplicate files from `Get.Parser.SourceGenerator/` and `Get.Lexer.SourceGenerator/`.
-2. Add a `<ProjectReference>` from each source generator project to `Get.EasyCSharp.GeneratorTools`.
-3. Ensure the shared project's `buildTransitive` configuration copies analyzer dependencies correctly.
+1. Consolidated divergent files: `Extension.cs` (merged 4 extra methods from Parser/Lexer copies), `AttributeBaseGenerator.cs` (added `AttributeBaseAnalyzer` + enhanced generator with diagnostics support).
+2. Moved `AttributeHelper.cs` and `FullType.cs` into `Get.EasyCSharp.GeneratorTools` (were only in Parser.SG / Lexer.SG).
+3. Removed 7 duplicate files from `Get.Parser.SourceGenerator/` and 8 from `Get.Lexer.SourceGenerator/` (GeneratorBase.cs, AddAttributeConverterAttribute.cs, AttributeHelper.cs, FullType.cs, Extension.cs, AttributeBaseGenerator.cs, Position.cs, and IToken.cs from Lexer only).
+4. Replaced with linked file references (`<Compile Include="..\..." Link="Shared\..." />`) in both csproj files, so types are available at compile time without physical duplication.
 
-**Effort:** Small (2-3 hours). Mostly mechanical deletion + project reference updates. Risk is low since the sources are identical.
+**Effort:** Small (2-3 hours). Mechanical deletion + project reference updates using linked files instead of copies.
 
 ---
 
@@ -274,7 +275,7 @@ The `CreateEmptyNFAState` delegate property is mutable. If mutated after the thr
 | Phase | Items | Est. Effort | Status |
 |-------|-------|-------------|--------|
 | **Phase 1 — Quick wins** | 3 (dead code), 6 (dead files), 7 (string perf), 11 (debug code), 13 (naming typo), 15 (PolySharp) | ~5-7 hours | ✅ **Completed** |
-| **Phase 2 — Core refactoring** | 1 (infra dedup), 2 (ParserGenerator/Analyzer dedup), 4 (AI code tests), 8 (goto removal), 9 (EOF handling), 12 (thread safety) | ~20-28 hours | ⏳ Not started |
+| **Phase 2 — Core refactoring** | 1 (infra dedup ✅), 2 (ParserGenerator/Analyzer dedup), 4 (AI code tests), 8 (goto removal), 9 (EOF handling), 12 (thread safety) | ~18-26 hours remaining | ⏳ In progress |
 | **Phase 3 — Testing overhaul** | 5 (test framework migration, new tests), 14 (Unicode support) | ~15-20 hours | ⏳ Not started |
 | **Phase 4 — Polish** | 10 (target framework), 13 (remaining naming), 16 (Position format), 17 (XML docs) | ~6-8 hours | ⏳ Not started |
 | **Total** | | **~46-63 hours** | |

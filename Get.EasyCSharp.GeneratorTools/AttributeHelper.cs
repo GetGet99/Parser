@@ -1,4 +1,4 @@
-﻿#nullable enable
+#nullable enable
 #pragma warning disable IDE0240
 #nullable enable
 #pragma warning restore IDE0240
@@ -16,7 +16,6 @@ static class AttributeHelper
 {
     public static IEnumerable<(AttributeData RealAttributeData, TOutput Serialized)> GetAttributes<TAttribute, TOutput>(SemanticModel semanticModel, ISymbol symbol, AttributeTransformer<TOutput> attributeTransformer, bool allowSubclass = true)
     {
-        // Get Attributes
         var Class = semanticModel.Compilation.GetTypeByMetadataName(typeof(TAttribute).FullName);
 
         return (
@@ -37,7 +36,6 @@ static class AttributeHelper
     }
     public static IEnumerable<(AttributeData RealAttributeData, TOutput Serialized)> GetAttributesAnyGeneric<TAttribute, TOutput>(SemanticModel semanticModel, ISymbol symbol, AttributeTransformer<TOutput> attributeTransformer, bool allowSubclass = true)
     {
-        // Get Attributes
         var attr = typeof(TAttribute);
         string name = attr.ContainsGenericParameters || attr.GenericTypeArguments.Length > 0 ? attr.Name[..attr.Name.IndexOf('`')] : attr.Name;
 

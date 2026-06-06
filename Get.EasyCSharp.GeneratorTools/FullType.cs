@@ -1,3 +1,4 @@
+using System;
 using Microsoft.CodeAnalysis;
 
 namespace Get.EasyCSharp.GeneratorTools;
@@ -21,7 +22,7 @@ record struct FullType(string TypeWithNamespace, bool Nullable = false)
             int typeIndex = name.IndexOf('`');
             string baseType = name[..typeIndex];
             var typeArguments = type.GetGenericArguments();
-            string arguments = string.Join(", ", typeArguments.Select(Type2String));
+            string arguments = string.Join(", ", System.Linq.Enumerable.Select(typeArguments, Type2String));
             return $"{baseType}<{arguments}>";
         }
         return $"global::{type.FullName}";

@@ -141,6 +141,26 @@ static class Extension
     {
         return Type?.Equals(PotentialBaseType, SymbolEqualityComparer.Default) ?? false;
     }
+    public static bool IsTheSameAsNoGeneric(this INamedTypeSymbol? Type, INamedTypeSymbol? PotentialBaseType)
+    {
+        return Type.RemoveGeneric()?.Equals(PotentialBaseType.RemoveGeneric(), SymbolEqualityComparer.Default) ?? false;
+    }
+    public static INamedTypeSymbol? RemoveGeneric(this INamedTypeSymbol? Type)
+    {
+        if (Type is null) return null;
+        if (Type.TypeArguments.Length > 0) return Type.ConstructUnboundGenericType();
+        return Type;
+    }
+    public static bool IsImplementing(this ITypeSymbol? Type, ITypeSymbol? PotentialInterface)
+    {
+        if (Type.IsTheSameAs(PotentialInterface)) return true;
+        return Type?.AllInterfaces.Any(x => x.IsTheSameAs(PotentialInterface)) ?? false;
+    }
+    public static bool IsImplementingNoGeneric(this INamedTypeSymbol? Type, INamedTypeSymbol? PotentialInterface)
+    {
+        if (Type.IsTheSameAsNoGeneric(PotentialInterface)) return true;
+        return Type?.AllInterfaces.Any(x => x.IsTheSameAsNoGeneric(PotentialInterface)) ?? false;
+    }
     public static IncrementalValueProvider<TOut> Select<TIn, TOut>(this IncrementalValueProvider<TIn> valueProvider, Func<TIn, TOut> func)
     {
         return valueProvider.Select((x, _) => func(x));
