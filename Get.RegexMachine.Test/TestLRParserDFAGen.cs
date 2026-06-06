@@ -150,6 +150,114 @@ public class TestLRParserDFAGen
         Assert.AreEqual(6m, result);
     }
 
+    // --- Error recovery tests ---
+
+    [TestMethod]
+    public void ErrorRecovery_GrammarWithErrorTerminal_CreateDFA_Succeeds()
+    {
+        var dfa = CreateErrorRecoveryGrammar();
+        Assert.IsNotNull(dfa);
+    }
+
+    [TestMethod]
+    public void ErrorRecovery_SingleUnknownToken_Recovers()
+    {
+        var dfa = CreateErrorRecoveryGrammar();
+        var errors = new List<ErrorTerminalValue>();
+        var result = LRParserRunner<decimal>.Parse(dfa, ErrorTokens('1', '+', '?', '+', '2'),
+            skipErrorHandling: false, handledErrors: errors);
+        Assert.AreEqual(3m, result);
+        Assert.IsTrue(errors.Count > 0, "Expected at least one handled error");
+    }
+
+    [TestMethod]
+    public void ErrorRecovery_MultipleUnknownTokens_AllRecovered()
+    {
+        var dfa = CreateErrorRecoveryGrammar();
+        var errors = new List<ErrorTerminalValue>();
+        var result = LRParserRunner<decimal>.Parse(dfa, ErrorTokens('1', '+', '?', '+', '#', '+', '5'),
+            skipErrorHandling: false, handledErrors: errors);
+        Assert.AreEqual(6m, result);
+        Assert.IsTrue(errors.Count >= 2, $"Expected at least 2 handled errors, got {errors.Count}");
+    }
+
+    [TestMethod]
+    public void ErrorRecovery_skipErrorHandlingTrue_Throws()
+    {
+        var dfa = CreateErrorRecoveryGrammar();
+        Assert.ThrowsException<LRParserRuntimeUnexpectedInputException>(() =>
+            LRParserRunner<decimal>.Parse(dfa, ErrorTokens('1', '+', '?', '+', '2'),
+                skipErrorHandling: true));
+    }
+
+    [TestMethod]
+    public void ErrorRecovery_GrammarWithoutErrorTerminal_Throws()
+    {
+        var dfa = CreateUnambiguousExprGrammar();
+        var errors = new List<ErrorTerminalValue>();
+        Assert.ThrowsException<LRParserRuntimeUnexpectedInputException>(() =>
+            LRParserRunner<decimal>.Parse(dfa, ErrorTokens('1', '+', '?', '+', '2'),
+                skipErrorHandling: false, handledErrors: errors));
+    }
+
+    [TestMethod]
+    public void ErrorRecovery_HandledErrorsList_ContainsErrorValues()
+    {
+        var dfa = CreateErrorRecoveryGrammar();
+        var errors = new List<ErrorTerminalValue>();
+        LRParserRunner<decimal>.Parse(dfa, ErrorTokens('1', '+', '?', '+', '3'),
+            skipErrorHandling: false, handledErrors: errors);
+        Assert.IsTrue(errors.Count > 0);
+        Assert.IsInstanceOfType(errors[0], typeof(ErrorTerminalValue));
+        Assert.IsInstanceOfType(errors[0].Value, typeof(LRParserRuntimeException));
+    }
+
+    [TestMethod]
+    public void ErrorRecovery_NormalInput_NoErrorsRecorded()
+    {
+        var dfa = CreateErrorRecoveryGrammar();
+        var errors = new List<ErrorTerminalValue>();
+        var result = LRParserRunner<decimal>.Parse(dfa, ErrorTokens('1', '+', '2', '*', '3'),
+            skipErrorHandling: false, handledErrors: errors);
+        Assert.AreEqual(7m, result);
+        Assert.AreEqual(0, errors.Count);
+    }
+
+    static ILRParserDFA CreateErrorRecoveryGrammar()
+    {
+        // E → E + E | E * E | num | ( E ) | Error
+        // Precedence: * > +  (left associative)
+        var gen = new LRParserDFAGen(EqualityComparer<INonTerminal>.Default, EqualityComparer<ITerminal?>.Default);
+        return gen.CreateDFA([
+            new GRule(NT.S, [NT.E], Reduce),
+            new GRule(NT.E, [NT.E, T.plus, NT.E], Reduce, precedenceTerminal: T.plus),
+            new GRule(NT.E, [NT.E, T.times, NT.E], Reduce, precedenceTerminal: T.times),
+            new GRule(NT.E, [T.num], Reduce),
+            new GRule(NT.E, [T.lparen, NT.E, T.rparen], Reduce),
+            new GRule(NT.E, [ErrorTerminal.Singleton], Reduce),
+        ], NT.S, [
+            (Terminals(T.times), Associativity.Left),
+            (Terminals(T.plus), Associativity.Left),
+        ]);
+    }
+
+    static IEnumerable<ITerminalValue> ErrorTokens(params object[] items)
+    {
+        foreach (var item in items)
+        {
+            yield return item switch
+            {
+                char c when c == '+' => new TV(T.plus),
+                char c when c == '*' => new TV(T.times),
+                char c when c == '(' => new TV(T.lparen),
+                char c when c == ')' => new TV(T.rparen),
+                char c when c == '?' || c == '#' => new TV(T.unknown),
+                char c when char.IsAsciiDigit(c) => Num(c - '0'),
+                _ => new TV(T.unknown)
+            };
+        }
+    }
+
     // --- Unambiguous expression grammar: E → E + T | T ; T → T * F | F ; F → num | ( E ) ---
 
     static ILRParserDFA CreateUnambiguousExprGrammar()
@@ -192,11 +300,12 @@ public class TestLRParserDFAGen
         public override string ToString() => Name;
     }
 
-    record struct T(string Name) : ITerminal
+    record struct T(string Name, bool IsUnknown = false) : ITerminal
     {
         public static readonly T
             a = new("a"), plus = new("+"), times = new("*"),
-            lparen = new("("), rparen = new(")"), num = new("num");
+            lparen = new("("), rparen = new(")"), num = new("num"),
+            unknown = new("?");
         public override string ToString() => Name;
     }
 
@@ -265,6 +374,7 @@ public class TestLRParserDFAGen
     {
         INonTerminalValue<decimal> d => d.Value,
         ITerminalValue<decimal> td => td.Value,
+        ErrorTerminalValue => 0m,
         _ => throw new InvalidOperationException($"Cannot eval {x.GetType()}")
     };
     static object Reduce(ISyntaxElementValue[] x)

@@ -1,7 +1,7 @@
 # Technical Debt Analysis & Resolution Plan
 
 Generated: 2026-06-06
-Last Updated: 2026-06-06 (Items 4, 5.1, 8 completed; 5 partially completed)
+Last Updated: 2026-06-06 (All items completed except Phase 4 polish)
 
 ---
 
@@ -106,14 +106,13 @@ These implement core algorithms: NFA-to-DFA conversion, LR(1) closure, goto, and
 
 ### 5. Testing Gaps
 
-**Status:** 🟡 **Partially completed** — `Get.Parser.Test`, `Get.Lexer.Test`, `Get.LangSupport.Test` migrated; inline production-code tests moved; source generator snapshot tests added.
+**Status:** ✅ **Completed** — test framework migration, snapshot tests, and parse error recovery tests all done.
 
 **Problem:**
 - Only `Get.RegexMachine.Test` uses a proper test framework (MSTest).
 - `Get.Lexer.Test`, `Get.LangSupport.Test` still use `Debug.Assert` in console apps — not real tests.
 - `Get.Lexer/StreamSeeker.Test.cs` and `RotatingBuffer.Test.cs` embed tests in production code via `partial class` (since resolved).
 - No unit tests for source generators (no snapshot/approval tests).
-- No tests for error recovery in `LRParserRunner.cs`.
 - No tests for `ParserBase.cs` or `LexerBase.cs`.
 
 **Completed (2026-06-06):
@@ -130,12 +129,21 @@ These implement core algorithms: NFA-to-DFA conversion, LR(1) closure, goto, and
      - `SnapshotTestBase.cs` — Roslyn compilation + generator driver helpers (reflection-loaded generators, metadata references)
      - `ParserGeneratorSnapshotTests.cs` — 4 tests: load check, full run with output assertions, precedence grammar, no-attribute case
      - `LexerGeneratorSnapshotTests.cs` — 3 tests: load check, full run, no-attribute case
-     - All 7 tests passing, 0 warnings/0 errors; project added to `Get.Parser.sln`
+      - All 7 tests passing, 0 warnings/0 errors; project added to `Get.Parser.sln`
 
-**Remaining:**
-2. Add parse error recovery tests.
+   **Completed (2026-06-06):
+   2. ✅ Parse error recovery tests — 7 new test methods added to `TestLRParserDFAGen.cs`:
+      - `ErrorRecovery_GrammarWithErrorTerminal_CreateDFA_Succeeds` — grammar with `E → Error` builds without conflict
+      - `ErrorRecovery_SingleUnknownToken_Recovers` — single unknown token absorbed, result correct, errors logged
+      - `ErrorRecovery_MultipleUnknownTokens_AllRecovered` — multiple unknown tokens all absorbed
+      - `ErrorRecovery_skipErrorHandlingTrue_Throws` — `skipErrorHandling: true` still throws
+      - `ErrorRecovery_GrammarWithoutErrorTerminal_Throws` — grammar without `ErrorTerminal` can't recover
+      - `ErrorRecovery_HandledErrorsList_ContainsErrorValues` — `handledErrors` entries verified
+      - `ErrorRecovery_NormalInput_NoErrorsRecorded` — normal input produces correct result with 0 errors
+      - Added `CreateErrorRecoveryGrammar()`, `ErrorTokens()`, `T.unknown` terminal, and `Eval` support for `ErrorTerminalValue`
+      - All 18 LR parser DFA tests pass (11 existing + 7 new)
 
-**Effort:** Small (2-3 hours remaining).
+**Effort:** ~1 hour.
 
 ---
 
@@ -317,7 +325,7 @@ Made `CreateEmptyNFAState` a property with private setter. Added `Parse(string, 
 |-------|-------|-------------|--------|
 | **Phase 1 — Quick wins** | 3 (dead code), 6 (dead files), 7 (string perf), 11 (debug code), 13 (naming typo), 15 (PolySharp) | ~5-7 hours | ✅ **Completed** |
 | **Phase 2 — Core refactoring** | 1 (infra dedup ✅), 2 (ParserGenerator/Analyzer dedup ✅), 4 (AI code tests ✅), 8 (goto removal ✅), 9 (EOF handling ✅), 12 (thread safety ✅) | ~0 hours remaining | ✅ **Completed** |
-| **Phase 3 — Testing overhaul** | 5 (test framework migration — Get.Parser.Test ✅, Get.Lexer.Test ✅, inline tests moved ✅, snapshot tests ✅), 14 (Unicode support) | ~2-3 hours remaining | 🟡 In progress (all item 5 except error recovery done) |
+| **Phase 3 — Testing overhaul** | 5 (test framework migration ✅, inline tests moved ✅, snapshot tests ✅, error recovery tests ✅), 14 (Unicode support) | ~0 hours remaining | ✅ **Completed** |
 | **Phase 4 — Polish** | 10 (target framework), 13 (remaining naming), 16 (Position format), 17 (XML docs) | ~6-8 hours | ⏳ Not started |
 | **Total** | | **~25-37 hours remaining** | |
 
@@ -339,3 +347,4 @@ These safe, mechanical changes have been completed:
 10. ✅ Migrated `Get.Parser.Test` from console app → MSTest — 4/4 tests passing, fixed `*`-in-character-class grammar bug
 11. ✅ Migrated `Get.Lexer.Test` from console app → MSTest — 2/2 tests passing, fixed `[Lexer<Terminals>]` → `[Lexer<CustomLexerSourceGen.Terminals>]` to resolve type ambiguity in source generator attribute
 12. ✅ Moved inline `partial class` tests from `Get.Lexer/` to `Get.Lexer.Test/` — 9 new MSTest methods for `RotatingBuffer` (5) + `StreamSeeker` (4), deleted dead-code inline test files + `TestUtils.cs`
+13. ✅ Added parse error recovery tests — 7 new tests in `TestLRParserDFAGen.cs` covering single/multiple unknown token recovery, error list population, normal input validation, and error handling edge cases
