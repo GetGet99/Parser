@@ -26,7 +26,8 @@ public static class RegexRunner<T> where T : class
         {
             var c = enumerator.Current;
             matchedTextBuilder.Append(c);
-            if (currentDFAState.Transitions.TryGetValue(c, out var nextState))
+            var nextState = currentDFAState[c];
+            if (nextState is not null)
             {
                 if (nextState.Value != null)
                 {
@@ -75,7 +76,8 @@ public static class RegexRunner<T> where T : class
         {
             if (Start.Char == -1) Start = new(enumerator.LineNo, enumerator.CharNo);
             var c = enumerator.Current;
-            if (currentDFAState.Transitions.TryGetValue(c, out var nextState))
+            var nextState = currentDFAState[c];
+            if (nextState is not null)
             {
                 matchedTextBuilder.Append(c);
                 if (nextState.Value != null)

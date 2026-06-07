@@ -51,22 +51,21 @@ partial class RegexCompiler<T> where T : class
         public int Order { get; } = order;
         public int Rule { get; } = rule;
         HashSet<NFAState>? _epsilon;
-        Dictionary<char, HashSet<NFAState>> Transitions { get; } = [];
-        public HashSet<NFAState> this[char c]
+        internal List<(CharRange Range, HashSet<NFAState> Targets)> Transitions { get; } = [];
+
+        /// <summary>
+        /// Gets the set of NFA states reachable from this state via the given character.
+        /// Uses range-based lookup for full Unicode support.
+        /// </summary>
+        public HashSet<NFAState>? this[char c]
         {
             get
             {
-                if (!Transitions.TryGetValue(c, out var result))
-                {
-                    Transitions[c] = result = [];
-                }
-                return result;
+                foreach (var (range, targets) in Transitions)
+                    if (range.Contains(c))
+                        return targets;
+                return null;
             }
-        }
-        public IEnumerable<char> TransitionKeys => Transitions.Keys;
-        internal void RemoveTransition(char c)
-        {
-            Transitions.Remove(c);
         }
         public HashSet<NFAState> Epsilon { get => _epsilon ??= []; }
         public T? Value { get; set; }
@@ -74,12 +73,47 @@ partial class RegexCompiler<T> where T : class
 
         void INFAState.AddTransition(char c, Get.RegexMachine.INFAState next)
         {
-            this[c].Add((NFAState)next);
+            AddTransitionRange(c, c, (NFAState)next);
+        }
+
+        void INFAState.AddTransition(char from, char to, INFAState next)
+        {
+            AddTransitionRange(from, to, (NFAState)next);
+        }
+
+        void AddTransitionRange(char from, char to, NFAState next)
+        {
+            var newRange = new CharRange(from, to);
+            // Try to merge with existing ranges when targeting the same state set
+            for (int i = 0; i < Transitions.Count; i++)
+            {
+                var (range, targets) = Transitions[i];
+                if (range.CanMerge(newRange) && targets.Contains(next))
+                {
+                    Transitions[i] = (CharRange.Merge(range, newRange), targets);
+                    return;
+                }
+            }
+            // No merge possible, add new entry
+            for (int i = 0; i < Transitions.Count; i++)
+            {
+                var (range, targets) = Transitions[i];
+                if (newRange.From < range.From)
+                {
+                    Transitions.Insert(i, (newRange, [next]));
+                    return;
+                }
+            }
+            Transitions.Add((newRange, [next]));
         }
 
         public override string ToString()
         {
-            return $"({Value as object ?? "null"}) => {{{string.Join(", ", from key in (_epsilon != null ? Transitions.Keys.Append('ε') : Transitions.Keys) select $"'{key}'")}}}";
+            var parts = new List<string>();
+            foreach (var (range, _) in Transitions)
+                parts.Add(range.ToString());
+            if (_epsilon != null) parts.Add("ε");
+            return $"({Value as object ?? "null"}) => {{{string.Join(", ", parts)}}}";
         }
 
         void INFAState.AddEpsilonTransition(INFAState next)
@@ -92,6 +126,7 @@ public interface INFAState
 {
     void AddEpsilonTransition(INFAState next);
     void AddTransition(char c, INFAState next);
+    void AddTransition(char from, char to, INFAState next);
 }
 public record class RegexVal<T>([StringSyntax(StringSyntaxAttribute.Regex)] string Regex, T? Value, int Order = 0) where T : class;
 public class RegexCompilerException : Exception

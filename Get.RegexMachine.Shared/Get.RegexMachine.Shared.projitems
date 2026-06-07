@@ -10,6 +10,7 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="$(MSBuildThisFileDirectory)BacktrackableIterator.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)CharRange.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)IBacktrackableEnumerator.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)ISeekable.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)ITextSeekable.cs" />

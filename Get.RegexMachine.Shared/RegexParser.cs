@@ -68,34 +68,56 @@ partial class RegexParser : ParserBase<RegexParser.Terminal, RegexParser.NonTerm
         return new(newStartState, newEndState);
     }
 
-    RegexNFAs ClassHandler(HashSet<char> chars, bool inverse)
+    RegexNFAs ClassHandler(IReadOnlyList<CharRange> chars, bool inverse)
     {
-
         INFAState newStartState = CreateEmptyNFAState();
         INFAState newEndState = CreateEmptyNFAState();
         if (!inverse)
         {
-            foreach (var c in chars)
-                newStartState.AddTransition(c, newEndState);
+            foreach (var range in chars)
+                newStartState.AddTransition(range.From, range.To, newEndState);
         }
         else
         {
-            for (char c = char.MinValue; c <= 127; c++)
-            {
-                if (!chars.Contains(c))
-                    newStartState.AddTransition(c, newEndState);
-            }
+            // Inverse class: complement of the given ranges, covering full char space
+            BuildComplementTransitions(chars, newStartState, newEndState);
         }
         return new(newStartState, newEndState);
+    }
+    static void BuildComplementTransitions(IReadOnlyList<CharRange> ranges, INFAState from, INFAState to)
+    {
+        char cur = char.MinValue;
+        foreach (var range in ranges.OrderBy(r => r.From))
+        {
+            if (range.From > cur)
+                from.AddTransition(cur, (char)(range.From - 1), to);
+            cur = (char)(range.To + 1);
+            if (cur == char.MinValue) return; // wrapped past MaxValue
+        }
+        if (cur <= char.MaxValue)
+            from.AddTransition(cur, char.MaxValue, to);
     }
     RegexNFAs DotHandler()
     {
         INFAState newStartState = CreateEmptyNFAState();
         INFAState newEndState = CreateEmptyNFAState();
-        for (char c = char.MinValue; c <= 127; c++)
+        // Match any char except line terminators, using full char range
+        // Build complement of line terminator set
+        var lineTerminators = new[] { '\n', '\r', '\u2028', '\u2029' }.OrderBy(c => c).ToList();
+        char rangeStart = char.MinValue;
+        foreach (var exc in lineTerminators)
         {
-            if (c is not ('\n' or '\r' or '\u2028' or '\u2029'))
-                newStartState.AddTransition(c, newEndState);
+            if (exc > rangeStart)
+            {
+                newStartState.AddTransition(rangeStart, (char)(exc - 1), newEndState);
+            }
+            rangeStart = (char)(exc + 1);
+            if (rangeStart == char.MinValue)
+                break;
+        }
+        if (rangeStart <= char.MaxValue)
+        {
+            newStartState.AddTransition(rangeStart, char.MaxValue, newEndState);
         }
         return new(newStartState, newEndState);
     }
@@ -107,36 +129,69 @@ partial class RegexParser : ParserBase<RegexParser.Terminal, RegexParser.NonTerm
         return new(newStartState, newEndState);
     }
     static T Identity<T>(T val) => val;
-    static IEnumerable<char> SingleCharSet(char a)
+    static IEnumerable<CharRange> SingleCharSet(char a)
     {
-        yield return a;
+        yield return new CharRange(a, a);
     }
-    static IEnumerable<char> RangeCharSet(char a, char b)
+    static IEnumerable<CharRange> RangeCharSet(char a, char b)
     {
-        for (char c = a; c <= b; c++)
-            yield return c;
+        yield return new CharRange(a, b);
     }
-    static IEnumerable<char> RangeSpecialEscapeToClass(char beforeEscaped)
+    static IEnumerable<CharRange> RangeSpecialEscapeToClass(char beforeEscaped)
     {
         if (beforeEscaped is 's')
         {
+            // \s — standard whitespace chars
             foreach (char c in " \t\n\r\f\v")
-                yield return c;
+                yield return new CharRange(c, c);
         }
         if (beforeEscaped is 'S')
         {
-            for (char c = char.MinValue; c <= 127; c++)
+            // \S — complement of whitespace over full char range
+            // Represented as ranges covering all non-whitespace chars
+            var whitespace = new[] { ' ', '\t', '\n', '\r', '\f', '\v' }.OrderBy(c => c).ToList();
+            char cur = char.MinValue;
+            foreach (var ws in whitespace)
             {
-                if (c is not (' ' or '\t' or '\n' or '\r' or '\f' or '\v'))
-                    yield return c;
+                if (ws > cur)
+                    yield return new CharRange(cur, (char)(ws - 1));
+                cur = (char)(ws + 1);
+                if (cur == char.MinValue) yield break;
             }
+            if (cur <= char.MaxValue)
+                yield return new CharRange(cur, char.MaxValue);
         }
     }
-    static HashSet<char> EmptyCharSet() => [];
-    static HashSet<char> AddAll(HashSet<char> target, IEnumerable<char> src)
+    static List<CharRange> EmptyCharSet() => [];
+    static List<CharRange> AddAll(List<CharRange> target, IEnumerable<CharRange> src)
     {
-        target.UnionWith(src);
+        foreach (var range in src)
+            AddRangeSorted(target, range);
         return target;
+    }
+    static void AddRangeSorted(List<CharRange> list, CharRange range)
+    {
+        for (int i = 0; i < list.Count; i++)
+        {
+            if (list[i].CanMerge(range))
+            {
+                // Merge with existing
+                list[i] = CharRange.Merge(list[i], range);
+                // Try to merge subsequent adjacent/overlapping ranges
+                while (i + 1 < list.Count && list[i].CanMerge(list[i + 1]))
+                {
+                    list[i] = CharRange.Merge(list[i], list[i + 1]);
+                    list.RemoveAt(i + 1);
+                }
+                return;
+            }
+            if (range.To < list[i].From)
+            {
+                list.Insert(i, range);
+                return;
+            }
+        }
+        list.Add(range);
     }
     static char SpecialEscapeNCSE(char val) => val switch
     {
@@ -258,12 +313,12 @@ partial class RegexParser : ParserBase<RegexParser.Terminal, RegexParser.NonTerm
         [Rule(Backslash, Equal, AS, VALUE, IDENTITY)]
         [Rule(Equal, AS, VALUE, IDENTITY)]
         Character,
-        [Type<IEnumerable<char>>]
+        [Type<IEnumerable<CharRange>>]
         [Rule(Character, AS, "a", nameof(SingleCharSet))]
         [Rule(Character, AS, "a", Dash, Character, AS, "b", nameof(RangeCharSet))]
         [Rule(Backslash, NormalCharOrSpecialEscapeToClass, AS, "beforeEscaped", nameof(RangeSpecialEscapeToClass))]
         Class,
-        [Type<HashSet<char>>]
+        [Type<List<CharRange>>]
         [Rule(nameof(EmptyCharSet))]
         [Rule(Classes, AS, "target", Class, AS, "src", nameof(AddAll))]
         Classes
