@@ -1,0 +1,7 @@
+<Project>
+  <PropertyGroup>
+    <EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles>
+    <!-- Hardcodes the obj folder, which cleanly isolates it per project -->
+    <CompilerGeneratedFilesOutputPath>obj\GeneratedFiles</CompilerGeneratedFilesOutputPath>
+  </PropertyGroup>
+</Project>
