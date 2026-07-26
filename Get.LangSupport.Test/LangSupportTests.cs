@@ -24,7 +24,7 @@ public class LangSupportTests
     [TestMethod]
     public void TextmateGrammarMetadata_InvalidLanguageId_Throws()
     {
-        Assert.ThrowsException<ArgumentException>(() => new TextmateGrammarMetadata
+        Assert.ThrowsExactly<ArgumentException>(() => new TextmateGrammarMetadata
         {
             LanguageId = "Invalid Lang!",
             LanguageExtensions = [".test"]
@@ -34,7 +34,7 @@ public class LangSupportTests
     [TestMethod]
     public void TextmateGrammarMetadata_InvalidExtension_Throws()
     {
-        Assert.ThrowsException<ArgumentException>(() => new TextmateGrammarMetadata
+        Assert.ThrowsExactly<ArgumentException>(() => new TextmateGrammarMetadata
         {
             LanguageId = "testlang",
             LanguageExtensions = ["test"]

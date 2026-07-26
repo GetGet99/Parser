@@ -150,22 +150,22 @@ public partial class TestManualRuleAttr
     }
     void TestBlock11(ILRParserDFA dfa)
     {
-        Assert.ThrowsException<LRParserRuntimeUnexpectedInputException>(() =>
+        Assert.ThrowsExactly<LRParserRuntimeUnexpectedInputException>(() =>
             LRParserRunner<Rule>.Parse(dfa, GetTerminals(UserTerminal.Number, AS, "Num", typeof(ExprAST), "Should not be here")));
     }
     void TestBlock12(ILRParserDFA dfa)
     {
-        Assert.ThrowsException<LRParserRuntimeUnexpectedEndingException>(() =>
+        Assert.ThrowsExactly<LRParserRuntimeUnexpectedEndingException>(() =>
             LRParserRunner<Rule>.Parse(dfa, GetTerminals(UserTerminal.Number, AS, "Num")));
     }
     void TestBlock13(ILRParserDFA dfa)
     {
-        Assert.ThrowsException<LRParserRuntimeUnexpectedInputException>(() =>
+        Assert.ThrowsExactly<LRParserRuntimeUnexpectedInputException>(() =>
             LRParserRunner<Rule>.Parse(dfa, GetTerminals(UserTerminal.Number, AS, AS)));
     }
     void TestBlock14(ILRParserDFA dfa)
     {
-        Assert.ThrowsException<LRParserRuntimeUnexpectedInputException>(() =>
+        Assert.ThrowsExactly<LRParserRuntimeUnexpectedInputException>(() =>
             LRParserRunner<Rule>.Parse(dfa, GetTerminals(WITHPARAM, "parameter", "argument", UserTerminal.Number, AS, "n1", "ReduceMethod")));
     }
     void TestBlock15(ILRParserDFA dfa)

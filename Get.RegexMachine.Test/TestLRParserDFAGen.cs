@@ -41,7 +41,7 @@ public class TestLRParserDFAGen
     public void ReduceReduceConflict_Throws()
     {
         var gen = new LRParserDFAGen(EqualityComparer<INonTerminal>.Default, EqualityComparer<ITerminal?>.Default);
-        Assert.ThrowsException<LRReduceReduceConflictException>(() =>
+        Assert.ThrowsExactly<LRReduceReduceConflictException>(() =>
             gen.CreateDFA([
                 new GRule(NT.S, [NT.A], _ => "s"),
                 new GRule(NT.S, [NT.B], _ => "s"),
@@ -55,7 +55,7 @@ public class TestLRParserDFAGen
     public void ShiftReduceConflict_WithoutPrecedence_Throws()
     {
         var gen = new LRParserDFAGen(EqualityComparer<INonTerminal>.Default, EqualityComparer<ITerminal?>.Default);
-        Assert.ThrowsException<LRShiftReduceConflictException>(() =>
+        Assert.ThrowsExactly<LRShiftReduceConflictException>(() =>
             gen.CreateDFA([
                 new GRule(NT.S, [NT.E], _ => 0m),
                 new GRule(NT.E, [NT.E, T.plus, NT.E], _ => 0m),
@@ -185,7 +185,7 @@ public class TestLRParserDFAGen
     public void ErrorRecovery_skipErrorHandlingTrue_Throws()
     {
         var dfa = CreateErrorRecoveryGrammar();
-        Assert.ThrowsException<LRParserRuntimeUnexpectedInputException>(() =>
+        Assert.ThrowsExactly<LRParserRuntimeUnexpectedInputException>(() =>
             LRParserRunner<decimal>.Parse(dfa, ErrorTokens('1', '+', '?', '+', '2'),
                 skipErrorHandling: true));
     }
@@ -195,7 +195,7 @@ public class TestLRParserDFAGen
     {
         var dfa = CreateUnambiguousExprGrammar();
         var errors = new List<ErrorTerminalValue>();
-        Assert.ThrowsException<LRParserRuntimeUnexpectedInputException>(() =>
+        Assert.ThrowsExactly<LRParserRuntimeUnexpectedInputException>(() =>
             LRParserRunner<decimal>.Parse(dfa, ErrorTokens('1', '+', '?', '+', '2'),
                 skipErrorHandling: false, handledErrors: errors));
     }

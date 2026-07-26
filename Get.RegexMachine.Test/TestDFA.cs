@@ -8,7 +8,7 @@ public class TestDFA
     [TestMethod]
     public void ConflictThrow_OverlappingPatterns()
     {
-        Assert.ThrowsException<RegexConflictCompilerException>(() =>
+        Assert.ThrowsExactly<RegexConflictCompilerException>(() =>
             RegexCompiler<string>.GenerateDFA([
                 new("if", "Keyword"),
                 new("[a-z]+", "Identifier"),
@@ -18,7 +18,7 @@ public class TestDFA
     [TestMethod]
     public void ConflictThrow_ExactSamePattern()
     {
-        Assert.ThrowsException<RegexConflictCompilerException>(() =>
+        Assert.ThrowsExactly<RegexConflictCompilerException>(() =>
             RegexCompiler<string>.GenerateDFA([
                 new("abc", "First"),
                 new("abc", "Second"),

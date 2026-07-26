@@ -73,6 +73,6 @@ public class RotatingBufferTests
         buf.Read(stream, 8);  // overwrite with next 8 bytes
 
         // Buffer now contains bytes 8..15; range 0..5 was overwritten
-        Assert.ThrowsException<ArgumentOutOfRangeException>(() => _ = buf[0..5]);
+        Assert.ThrowsExactly<ArgumentOutOfRangeException>(() => _ = buf[0..5]);
     }
 }
