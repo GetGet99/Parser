@@ -11,7 +11,7 @@
 
 	<ItemGroup>
 		<ProjectReference Include="..\Get.PLShared\Get.PLShared.csproj" />
-		<PackageReference Include="PolySharp" Version="1.14.1" PrivateAssets="all" Condition="'$(TargetFramework)' == 'netstandard2.0'" />
+		<PackageReference Include="PolySharp" Version="1.16.0" PrivateAssets="all" Condition="'$(TargetFramework)' == 'netstandard2.0'" />
 	</ItemGroup>
 
 </Project>
