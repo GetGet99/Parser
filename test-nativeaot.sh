@@ -4,7 +4,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # Add test projects here. Each entry is a path relative to SCRIPT_DIR.
-PROJECTS=(
+ALL_PROJECTS=(
   "Get.RegexMachine.Test"
   # "Get.SourceGenerator.Test" # not supported yet
   # "Get.LangSupport.Test" # not supported yet - minor issues left on JSON serialization
@@ -12,15 +12,53 @@ PROJECTS=(
   "Get.Parser.Test"
 )
 
+NO_BUILD=false
+FILTER_PROJECT=""
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --no-build)
+      NO_BUILD=true
+      shift
+      ;;
+    *)
+      FILTER_PROJECT="$1"
+      shift
+      ;;
+  esac
+done
+
+PROJECTS=()
+if [[ -n "$FILTER_PROJECT" ]]; then
+  for project in "${ALL_PROJECTS[@]}"; do
+    if [[ "$project" == "$FILTER_PROJECT" || "$(basename "$project")" == "$FILTER_PROJECT" ]]; then
+      PROJECTS+=("$project")
+    fi
+  done
+  if [[ ${#PROJECTS[@]} -eq 0 ]]; then
+    echo "ERROR: No matching project found for '$FILTER_PROJECT'"
+    exit 1
+  fi
+else
+  PROJECTS=("${ALL_PROJECTS[@]}")
+fi
+
 FAILED=()
 
 for project in "${PROJECTS[@]}"; do
   echo "========================================"
-  echo "Publishing: $project"
+  if [[ "$NO_BUILD" == false ]]; then
+    echo "Publishing: $project"
+  else
+    echo "Testing: $project"
+  fi
   echo "========================================"
 
   cd "$SCRIPT_DIR/$project"
-  dotnet publish -c Release
+
+  if [[ "$NO_BUILD" == false ]]; then
+    dotnet publish -c Release
+  fi
 
   # Find the publish output directory (linux-x64/publish)
   publish_dir=$(find bin/Release -type d -name "publish" | head -1)
