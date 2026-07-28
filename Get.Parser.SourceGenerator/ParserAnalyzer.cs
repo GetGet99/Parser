@@ -25,7 +25,8 @@ partial class ParserAnalyzer() : AttributeBaseAnalyzer<ParserAttribute, ParserAn
         ParserFuncInvalidArgs,
         ParserFuncDuplicateArgs,
         ParserFuncMissingArgs,
-        ParserRuleNoTypeReturn
+        ParserRuleNoTypeReturn,
+        InternalAnalyzerError
     );
     readonly static DiagnosticDescriptor NotParserBase = new(
         "GP1001",
@@ -99,6 +100,14 @@ partial class ParserAnalyzer() : AttributeBaseAnalyzer<ParserAttribute, ParserAn
         DiagnosticSeverity.Error,
         true
     );
+    readonly static DiagnosticDescriptor InternalAnalyzerError = new(
+        "GP1004",
+        "Internal Analyzer Error",
+        "Internal Analyzer Error {0}",
+        "Get.Parser",
+        DiagnosticSeverity.Error,
+        true
+    );
     protected override void OnPointVisit(OnPointVisitArguments args)
     {
         if (!ParserBaseHelper.TryGetParserBaseTypes(args.Symbol, out _, out _))
@@ -106,7 +115,20 @@ partial class ParserAnalyzer() : AttributeBaseAnalyzer<ParserAttribute, ParserAn
             args.ReportDiagnostic(Diagnostic.Create(NotParserBase, args.SyntaxNode.BaseList?.GetLocation() ?? args.SyntaxNode.Identifier.GetLocation()));
             return;
         }
-        OnPointVisit2(args);
+        try
+        {
+            OnPointVisit2(args);
+        } catch (Exception e)
+        {
+            args.Context.ReportDiagnostic(Diagnostic.Create(
+                InternalAnalyzerError,
+                args.SyntaxNode.GetLocation(),
+                $"""
+                {e.GetType()} {e.Message}
+                {e.StackTrace}
+                """
+            ));
+        }
     }
     protected void OnPointVisit2(OnPointVisitArguments args)
     {

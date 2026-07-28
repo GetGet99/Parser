@@ -17,9 +17,20 @@ partial class ParserGenerator : AttributeBaseGenerator<ParserAttribute, ParserGe
 {
     protected override string? OnPointVisit(OnPointVisitArguments args)
     {
-        if (!ParserBaseHelper.TryGetParserBaseTypes(args.Symbol, out _, out _))
-            return null;
-        return OnPointVisit2(args).JoinDoubleNewLine();
+        try
+        {
+            if (!ParserBaseHelper.TryGetParserBaseTypes(args.Symbol, out _, out _))
+                return null;
+            return OnPointVisit2(args).JoinDoubleNewLine();
+        } catch (Exception ex)
+        {
+            return $"""
+                /*
+                    Exception {ex.GetType()} {ex.Message}
+                    {ex.StackTrace}
+                */
+                """;
+        }
     }
     protected IEnumerable<string> OnPointVisit2(OnPointVisitArguments args)
     {

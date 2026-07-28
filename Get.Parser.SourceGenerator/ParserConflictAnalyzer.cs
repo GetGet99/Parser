@@ -21,7 +21,7 @@ partial class ParserConflictAnalyzer() : AttributeBaseAnalyzer<ParserAttribute, 
 
 
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics => ImmutableArray.Create(
-        ShiftReduceConflict, ReduceReduceConflict
+        ShiftReduceConflict, ReduceReduceConflict, InternalAnalyzerError
     );
     readonly static DiagnosticDescriptor ShiftReduceConflict = new(
         "GPC001",
@@ -39,6 +39,14 @@ partial class ParserConflictAnalyzer() : AttributeBaseAnalyzer<ParserAttribute, 
         DiagnosticSeverity.Error,
         true
     );
+    readonly static DiagnosticDescriptor InternalAnalyzerError = new(
+        "GPC003",
+        "Internal Conflict Analyzer Error",
+        "Internal Conflict Analyzer Error {0}",
+        "Get.Parser",
+        DiagnosticSeverity.Error,
+        true
+    );
     protected override void OnPointVisit(OnPointVisitArguments args)
     {
         if (!(args.Symbol.BaseType?.ToString().StartsWith("Get.Parser.ParserBase") ?? false))
@@ -49,7 +57,20 @@ partial class ParserConflictAnalyzer() : AttributeBaseAnalyzer<ParserAttribute, 
         {
             return;
         }
-        OnPointVisit2(args);
+        try
+        {
+            OnPointVisit2(args);
+        } catch (Exception e)
+        {
+            args.Context.ReportDiagnostic(Diagnostic.Create(
+                InternalAnalyzerError,
+                args.SyntaxNode.GetLocation(),
+                $"""
+                {e.GetType()} {e.Message}
+                {e.StackTrace}
+                """
+            ));
+        }
     }
     protected void OnPointVisit2(OnPointVisitArguments args)
     {
@@ -100,8 +121,8 @@ partial class ParserConflictAnalyzer() : AttributeBaseAnalyzer<ParserAttribute, 
                             // the type is ambiguous, lexer won't allow it
                             // but we will just say it has no type here
                             TerminalTypes[value] = null;
-                        TerminalNames[value] = fieldSymbol.Name;
                     }
+                    TerminalNames[value] = fieldSymbol.Name;
                 }
             }
         }
