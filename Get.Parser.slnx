@@ -1,0 +1,31 @@
+<Solution>
+  <Configurations>
+    <Platform Name="Any CPU" />
+    <Platform Name="x64" />
+    <Platform Name="x86" />
+  </Configurations>
+  <Folder Name="/LangSupport/">
+    <Project Path="Get.LangSupport.Test/Get.LangSupport.Test.csproj" />
+    <Project Path="Get.LangSupport/Get.LangSupport.csproj" />
+  </Folder>
+  <Folder Name="/Lexer/">
+    <Project Path="Get.Lexer.Shared/Get.Lexer.Shared.shproj" />
+    <Project Path="Get.Lexer.SourceGenerator/Get.Lexer.SourceGenerator.csproj" />
+    <Project Path="Get.Lexer.Test/Get.Lexer.Test.csproj" />
+    <Project Path="Get.Lexer/Get.Lexer.csproj" />
+  </Folder>
+  <Folder Name="/Parser/">
+    <Project Path="Get.Parser.Shared/Get.Parser.Shared.shproj" />
+    <Project Path="Get.Parser.SourceGenerator/Get.Parser.SourceGenerator.csproj" />
+    <Project Path="Get.Parser.Test/Get.Parser.Test.csproj" />
+    <Project Path="Get.Parser/Get.Parser.csproj" />
+    <Project Path="Get.SourceGenerator.Test/Get.SourceGenerator.Test.csproj" />
+  </Folder>
+  <Folder Name="/Regex/">
+    <Project Path="Get.RegexMachine.Shared/Get.RegexMachine.Shared.shproj" />
+    <Project Path="Get.RegexMachine.Test/Get.RegexMachine.Test.csproj" />
+    <Project Path="Get.RegexMachine/Get.RegexMachine.csproj" />
+  </Folder>
+  <Project Path="Get.EasyCSharp.GeneratorTools/Get.EasyCSharp.GeneratorTools.csproj" />
+  <Project Path="Get.PLShared/Get.PLShared.csproj" />
+</Solution>
